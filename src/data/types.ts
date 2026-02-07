@@ -13,6 +13,8 @@ export interface Client {
   billing_addr?: string;
   is_active: boolean;
   preferentialPrices: Partial<Record<ServiceType, number>>;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Order {

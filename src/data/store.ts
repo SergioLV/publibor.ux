@@ -1,6 +1,6 @@
-import { Client, Order, DefaultPrices, ServiceType, TAX_PCT } from './types';
+import type { Client, Order, DefaultPrices, ServiceType } from './types';
+import { TAX_PCT } from './types';
 
-let clientIdCounter = 1;
 let orderIdCounter = 1;
 
 export const defaultPrices: DefaultPrices = {
@@ -9,50 +9,17 @@ export const defaultPrices: DefaultPrices = {
   TEXTURIZADO: 12000,
 };
 
-let clients: Client[] = [
-  {
-    id: String(clientIdCounter++),
-    name: 'Cliente Demo',
-    rut: '12.345.678-9',
-    email: 'demo@test.cl',
-    phone: '+56912345678',
-    is_active: true,
-    preferentialPrices: { TEXTIL: 4500 },
-  },
-];
-
 let orders: Order[] = [];
 
-export function getClients(): Client[] {
-  return [...clients];
-}
-
-export function getActiveClients(): Client[] {
-  return clients.filter((c) => c.is_active);
-}
-
-export function getClientById(id: string): Client | undefined {
-  return clients.find((c) => c.id === id);
-}
-
-export function createClient(data: Omit<Client, 'id'>): Client {
-  const client: Client = { ...data, id: String(clientIdCounter++) };
-  clients.push(client);
-  return client;
-}
-
-export function updateClient(id: string, data: Omit<Client, 'id'>): Client | null {
-  const idx = clients.findIndex((c) => c.id === id);
-  if (idx === -1) return null;
-  clients[idx] = { ...data, id };
-  return clients[idx];
-}
+// --- Client helpers (no longer store data, just compute) ---
 
 export function getEffectivePrice(client: Client, service: ServiceType): number | null {
   const pref = client.preferentialPrices[service];
   if (pref !== undefined && pref > 0) return pref;
   return defaultPrices[service];
 }
+
+// --- Order functions (still in-memory for now) ---
 
 export function calculateOrder(unitPrice: number, meters: number) {
   const subtotal = Math.round(meters * unitPrice);

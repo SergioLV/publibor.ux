@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
-import { getOrders, getClients, togglePaid } from '../data/store';
+import { useState, useMemo, useEffect } from 'react';
+import { getOrders, togglePaid } from '../data/store';
+import { fetchClients } from '../data/api';
 import { formatCLP, formatDate } from '../data/format';
 import type { Order, Client } from '../data/types';
 import './OrderList.css';
@@ -8,7 +9,12 @@ const PAGE_SIZE = 25;
 
 export default function OrderList() {
   const [orders, setOrders] = useState<Order[]>(getOrders());
-  const clients = getClients();
+  const [clients, setClients] = useState<Client[]>([]);
+
+  useEffect(() => {
+    fetchClients({ limit: 500 }).then((res) => setClients(res.clients)).catch(() => {});
+  }, []);
+
   const clientMap = useMemo(() => {
     const m: Record<string, Client> = {};
     clients.forEach((c) => (m[c.id] = c));

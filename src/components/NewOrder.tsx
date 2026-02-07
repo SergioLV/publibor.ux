@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
-import type { ServiceType } from '../data/types';
+import { useState, useMemo, useEffect } from 'react';
+import type { Client, ServiceType } from '../data/types';
 import { SERVICE_TYPES } from '../data/types';
-import { getActiveClients, getClientById, getEffectivePrice, calculateOrder, createOrder, defaultPrices, getOrders } from '../data/store';
+import { getEffectivePrice, calculateOrder, createOrder, defaultPrices, getOrders } from '../data/store';
+import { fetchClients, fetchClientById } from '../data/api';
 import { formatCLP, formatDate } from '../data/format';
 import './NewOrder.css';
 
@@ -10,21 +11,41 @@ interface Props {
 }
 
 export default function NewOrder({ onNavigate }: Props) {
-  const activeClients = getActiveClients();
+  const [activeClients, setActiveClients] = useState<Client[]>([]);
   const [clientId, setClientId] = useState('');
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [service, setService] = useState<ServiceType | ''>('');
   const [meters, setMeters] = useState('');
   const [clientSearch, setClientSearch] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [loadingClients, setLoadingClients] = useState(false);
 
-  const selectedClient = clientId ? getClientById(clientId) : null;
+  // Fetch clients for dropdown (search server-side)
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (!clientSearch && !showDropdown) return;
+      setLoadingClients(true);
+      try {
+        const res = await fetchClients({ search: clientSearch || undefined, active: true, limit: 20 });
+        setActiveClients(res.clients);
+      } catch {
+        // silent — dropdown just won't show
+      } finally {
+        setLoadingClients(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [clientSearch, showDropdown]);
 
-  const filteredClients = activeClients.filter((c) =>
-    c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
-    (c.rut && c.rut.includes(clientSearch))
-  );
+  // Fetch selected client details
+  useEffect(() => {
+    if (!clientId) { setSelectedClient(null); return; }
+    fetchClientById(clientId).then(setSelectedClient).catch(() => setSelectedClient(null));
+  }, [clientId]);
+
+  const filteredClients = activeClients;
 
   const calc = useMemo(() => {
     if (!selectedClient || !service || !meters || Number(meters) < 0.1) return null;
@@ -74,13 +95,13 @@ export default function NewOrder({ onNavigate }: Props) {
   function resetForm() {
     setSuccess(false);
     setClientId('');
+    setSelectedClient(null);
     setService('');
     setMeters('');
     setClientSearch('');
     setError('');
   }
 
-  // Step progress
   const step = !clientId ? 1 : !service ? 2 : 3;
 
   if (success) {
@@ -103,7 +124,6 @@ export default function NewOrder({ onNavigate }: Props) {
     <div className="no-flow">
       {error && <div className="error-msg">{error}</div>}
 
-      {/* Progress indicator */}
       <div className="steps">
         <div className={`step ${step >= 1 ? 'active' : ''} ${clientId ? 'done' : ''}`}>
           <span className="step-num">1</span><span className="step-label">Cliente</span>
@@ -118,7 +138,6 @@ export default function NewOrder({ onNavigate }: Props) {
         </div>
       </div>
 
-      {/* Step 1: Client */}
       <div className="no-card">
         <div className="no-card-head">
           <span className="no-card-num">1</span>
@@ -143,6 +162,7 @@ export default function NewOrder({ onNavigate }: Props) {
               ))}
             </ul>
           )}
+          {showDropdown && loadingClients && <div className="dropdown-loading">Buscando...</div>}
         </div>
         {selectedClient && (
           <div className="client-badge">
@@ -168,7 +188,6 @@ export default function NewOrder({ onNavigate }: Props) {
         )}
       </div>
 
-      {/* Step 2: Service */}
       <div className="no-card">
         <div className="no-card-head">
           <span className="no-card-num">2</span>
@@ -194,7 +213,6 @@ export default function NewOrder({ onNavigate }: Props) {
         {priceError && <div className="error-msg" style={{ marginTop: '0.5rem' }}>{priceError}</div>}
       </div>
 
-      {/* Step 3: Meters */}
       <div className="no-card">
         <div className="no-card-head">
           <span className="no-card-num">3</span>
@@ -211,7 +229,6 @@ export default function NewOrder({ onNavigate }: Props) {
         />
       </div>
 
-      {/* Recent orders */}
       {selectedClient && recentOrders.length > 0 && (
         <div className="no-card recent">
           <div className="no-card-head">
@@ -230,7 +247,6 @@ export default function NewOrder({ onNavigate }: Props) {
         </div>
       )}
 
-      {/* Sticky bottom summary */}
       <div className={`summary-bar ${calc ? 'ready' : ''}`}>
         <div className="summary-details">
           <div className="sd-item">

@@ -207,3 +207,36 @@ tr:hover td { background: var(--color-surface-2); }
     grid-template-columns: 1fr;
   }
 }
+
+/* Skeleton loading */
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-row td {
+  padding: 0.7rem 0.85rem;
+}
+
+.skeleton-cell {
+  display: block;
+  height: 0.85rem;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-2) 25%,
+    var(--color-border) 50%,
+    var(--color-surface-2) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-cell.wide { width: 80%; }
+.skeleton-cell.medium { width: 60%; }
+.skeleton-cell.short { width: 50%; }
+.skeleton-cell.tiny { width: 30%; }
+
+.skeleton-row:hover td {
+  background: transparent;
+}

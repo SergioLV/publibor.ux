@@ -1,28 +1,49 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { SERVICE_TYPES } from '../data/types';
 import type { Client, ServiceType } from '../data/types';
-import { getClients, createClient, updateClient } from '../data/store';
+import { fetchClients, apiCreateClient, apiUpdateClient } from '../data/api';
 import { formatCLP } from '../data/format';
 import './ClientList.css';
 
+const PAGE_SIZE = 20;
+
 export default function ClientList() {
-  const [clients, setClients] = useState<Client[]>(getClients());
+  const [clients, setClients] = useState<Client[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [showAll, setShowAll] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [editing, setEditing] = useState<Client | null>(null);
   const [isNew, setIsNew] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const filtered = clients
-    .filter((c) => showAll || c.is_active)
-    .filter(
-      (c) =>
-        c.name.toLowerCase().includes(search.toLowerCase()) ||
-        (c.rut && c.rut.includes(search))
-    );
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetchClients({
+        page,
+        limit: PAGE_SIZE,
+        search: search || undefined,
+        active: showAll ? undefined : true,
+      });
+      setClients(res.clients);
+      setTotal(res.total);
+      setTotalPages(res.totalPages);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error cargando clientes');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search, showAll]);
 
-  function refresh() {
-    setClients(getClients());
-  }
+  useEffect(() => { load(); }, [load]);
+
+  // Debounce search — reset page on search change
+  useEffect(() => { setPage(1); }, [search, showAll]);
 
   function openNew() {
     setIsNew(true);
@@ -43,22 +64,29 @@ export default function ClientList() {
     setEditing({ ...c, preferentialPrices: { ...c.preferentialPrices } });
   }
 
-  function save() {
+  async function save() {
     if (!editing || !editing.name.trim()) return;
-    // Clean preferential prices
     const cleaned: Partial<Record<ServiceType, number>> = {};
     for (const s of SERVICE_TYPES) {
       const v = editing.preferentialPrices[s];
       if (v !== undefined && v > 0) cleaned[s] = v;
     }
     const data = { ...editing, preferentialPrices: cleaned };
-    if (isNew) {
-      createClient(data);
-    } else {
-      updateClient(editing.id, data);
+    setSaving(true);
+    setError('');
+    try {
+      if (isNew) {
+        await apiCreateClient(data);
+      } else {
+        await apiUpdateClient(editing.id, data);
+      }
+      setEditing(null);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error guardando cliente');
+    } finally {
+      setSaving(false);
     }
-    setEditing(null);
-    refresh();
   }
 
   function setPrefPrice(service: ServiceType, val: string) {
@@ -93,6 +121,8 @@ export default function ClientList() {
         </button>
       </div>
 
+      {error && <div className="error-msg">{error}</div>}
+
       <div className="table-wrap">
       <table>
         <thead>
@@ -109,7 +139,20 @@ export default function ClientList() {
           </tr>
         </thead>
         <tbody>
-          {filtered.map((c) => (
+          {loading && Array.from({ length: 6 }).map((_, i) => (
+            <tr key={`skel-${i}`} className="skeleton-row">
+              <td><span className="skeleton-cell wide" /></td>
+              <td><span className="skeleton-cell medium" /></td>
+              <td><span className="skeleton-cell wide" /></td>
+              <td><span className="skeleton-cell medium" /></td>
+              <td><span className="skeleton-cell short" /></td>
+              <td><span className="skeleton-cell short" /></td>
+              <td><span className="skeleton-cell short" /></td>
+              <td><span className="skeleton-cell tiny" /></td>
+              <td><span className="skeleton-cell tiny" /></td>
+            </tr>
+          ))}
+          {!loading && clients.map((c) => (
             <tr key={c.id}>
               <td>{c.name}</td>
               <td>{c.rut || '—'}</td>
@@ -124,11 +167,20 @@ export default function ClientList() {
               </td>
             </tr>
           ))}
-          {filtered.length === 0 && (
+          {!loading && clients.length === 0 && (
             <tr><td colSpan={9} style={{ textAlign: 'center' }}>Sin resultados</td></tr>
           )}
         </tbody>
       </table>
+      </div>
+
+      <div className="order-footer">
+        <span>{total} clientes</span>
+        <div className="pagination">
+          <button disabled={page <= 1} onClick={() => setPage(page - 1)}>← Anterior</button>
+          <span>Pág {page} de {Math.max(totalPages, 1)}</span>
+          <button disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Siguiente →</button>
+        </div>
       </div>
 
       {editing && (
@@ -172,7 +224,9 @@ export default function ClientList() {
               ))}
             </div>
             <div className="modal-actions">
-              <button className="btn-primary" onClick={save}>Guardar</button>
+              <button className="btn-primary" onClick={save} disabled={saving}>
+                {saving ? 'Guardando...' : 'Guardar'}
+              </button>
               <button onClick={() => setEditing(null)}>Cancelar</button>
             </div>
           </div>
