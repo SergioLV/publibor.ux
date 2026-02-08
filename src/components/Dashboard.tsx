@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { getOrders, getDefaultPrices } from '../data/store';
+import { getOrders } from '../data/store';
 import { fetchClients } from '../data/api';
 import { SERVICE_TYPES } from '../data/types';
 import type { Client } from '../data/types';
@@ -13,10 +13,9 @@ interface Props {
 export default function Dashboard({ onNavigate }: Props) {
   const orders = getOrders();
   const [clients, setClients] = useState<Client[]>([]);
-  const prices = getDefaultPrices();
 
   useEffect(() => {
-    fetchClients({ limit: 500 }).then((res) => setClients(res.clients)).catch(() => {});
+    fetchClients({ limit: 100 }).then((res) => setClients(res.clients)).catch(() => {});
   }, []);
 
   const stats = useMemo(() => {
@@ -28,7 +27,6 @@ export default function Dashboard({ onNavigate }: Props) {
     today.setHours(0, 0, 0, 0);
     const ordersToday = orders.filter((o) => new Date(o.created_at) >= today);
 
-    // Top clients by order count
     const clientOrders: Record<string, number> = {};
     orders.forEach((o) => {
       clientOrders[o.client_id] = (clientOrders[o.client_id] || 0) + 1;
@@ -39,7 +37,6 @@ export default function Dashboard({ onNavigate }: Props) {
       .slice(0, 5)
       .map(([id, count]) => ({ name: clientMap[id]?.name || '—', count }));
 
-    // Orders by service
     const byService: Record<string, { count: number; total: number }> = {};
     orders.forEach((o) => {
       if (!byService[o.service]) byService[o.service] = { count: 0, total: 0 };
@@ -80,7 +77,6 @@ export default function Dashboard({ onNavigate }: Props) {
             return (
               <div key={s} className="service-row">
                 <span className="service-name">{s}</span>
-                <span className="service-price">{formatCLP(prices[s] ?? 0)}/m</span>
                 <span className="service-count">{data?.count || 0} órdenes</span>
                 <span className="service-total">{formatCLP(data?.total || 0)}</span>
               </div>

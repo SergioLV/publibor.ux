@@ -11,7 +11,7 @@ type View = 'dashboard' | 'clients' | 'new-order' | 'orders' | 'prices';
 function App() {
   const [view, setView] = useState<View>('dashboard');
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    return (localStorage.getItem('publibor-theme') as 'dark' | 'light') || 'dark';
+    return (localStorage.getItem('publibor-theme') as 'dark' | 'light') || 'light';
   });
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);

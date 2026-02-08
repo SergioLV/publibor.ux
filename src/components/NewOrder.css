@@ -418,3 +418,55 @@
   .summary-details { gap: 1rem; }
   .steps { display: none; }
 }
+
+/* Tier info */
+.tier-info {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-text-dim);
+  padding: 0.4rem 0.6rem;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-sm);
+}
+
+.override-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.4rem;
+  background: var(--color-primary-dim);
+  color: var(--color-primary);
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+/* Client overrides count */
+.cb-overrides {
+  margin-top: 0.4rem;
+}
+.cb-overrides-label {
+  font-size: 0.75rem;
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+/* Service unit label */
+.so-unit {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+}
+
+/* Service grid — 4 services now */
+.service-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 768px) {
+  .service-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.dropdown-loading {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}

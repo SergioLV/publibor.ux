@@ -240,3 +240,62 @@ tr:hover td { background: var(--color-surface-2); }
 .skeleton-row:hover td {
   background: transparent;
 }
+
+/* Preferential prices in modal */
+.prices-hint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin: 0 0 0.75rem;
+}
+
+.pref-service-group {
+  margin-bottom: 1rem;
+}
+
+.pref-service-label {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--color-primary);
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+
+.pref-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.pref-tier-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.pref-tier-range {
+  min-width: 90px;
+  color: var(--color-text-dim);
+}
+
+.pref-tier-default {
+  min-width: 70px;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.pref-tier-row input {
+  width: 100px;
+  padding: 0.3rem 0.4rem;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 0.8rem;
+  outline: none;
+}
+.pref-tier-row input:focus {
+  border-color: var(--color-primary);
+}

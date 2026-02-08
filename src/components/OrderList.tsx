@@ -12,7 +12,7 @@ export default function OrderList() {
   const [clients, setClients] = useState<Client[]>([]);
 
   useEffect(() => {
-    fetchClients({ limit: 500 }).then((res) => setClients(res.clients)).catch(() => {});
+    fetchClients({ limit: 100 }).then((res) => setClients(res.clients)).catch(() => {});
   }, []);
 
   const clientMap = useMemo(() => {

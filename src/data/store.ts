@@ -1,28 +1,48 @@
-import type { Client, Order, DefaultPrices, ServiceType } from './types';
+import type { Client, Order, PriceTier, ServiceType } from './types';
 import { TAX_PCT } from './types';
 
 let orderIdCounter = 1;
-
-export const defaultPrices: DefaultPrices = {
-  TEXTIL: 5000,
-  UV: 8000,
-  TEXTURIZADO: 12000,
-};
-
 let orders: Order[] = [];
 
-// --- Client helpers (no longer store data, just compute) ---
+// --- Tier lookup ---
 
-export function getEffectivePrice(client: Client, service: ServiceType): number | null {
-  const pref = client.preferentialPrices[service];
-  if (pref !== undefined && pref > 0) return pref;
-  return defaultPrices[service];
+export function findTier(tiers: PriceTier[], service: ServiceType, quantity: number): PriceTier | null {
+  const serviceTiers = tiers
+    .filter((t) => t.service === service)
+    .sort((a, b) => a.min_meters - b.min_meters);
+
+  for (const tier of serviceTiers) {
+    const min = tier.min_meters;
+    const max = tier.max_meters;
+    if (quantity >= min && (max === null || quantity <= max)) {
+      return tier;
+    }
+  }
+  return null;
 }
 
-// --- Order functions (still in-memory for now) ---
+// --- Effective price: check client override for the matched tier ---
 
-export function calculateOrder(unitPrice: number, meters: number) {
-  const subtotal = Math.round(meters * unitPrice);
+export function getEffectivePrice(
+  client: Client,
+  tiers: PriceTier[],
+  service: ServiceType,
+  quantity: number
+): { price: number; tier: PriceTier; isOverride: boolean } | null {
+  const tier = findTier(tiers, service, quantity);
+  if (!tier) return null;
+
+  const override = client.prices.find((p) => p.default_price_id === tier.id);
+  if (override) {
+    return { price: override.price, tier, isOverride: true };
+  }
+  return { price: tier.price, tier, isOverride: false };
+}
+
+// --- Order calculation ---
+
+export function calculateOrder(unitPrice: number, quantity: number) {
+  const subtotal = Math.round(quantity * unitPrice);
   const tax_amount = Math.round(subtotal * (TAX_PCT / 100));
   const total_amount = subtotal + tax_amount;
   return { subtotal, tax_pct: TAX_PCT, tax_amount, total_amount };
@@ -55,12 +75,4 @@ export function togglePaid(orderId: string): Order | null {
   order.is_paid = !order.is_paid;
   order.paid_at = order.is_paid ? new Date().toISOString() : null;
   return { ...order };
-}
-
-export function getDefaultPrices(): DefaultPrices {
-  return { ...defaultPrices };
-}
-
-export function updateDefaultPrice(service: ServiceType, price: number | null) {
-  defaultPrices[service] = price;
 }

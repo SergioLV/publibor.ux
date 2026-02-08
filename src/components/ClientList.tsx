@@ -1,11 +1,28 @@
-import { useState, useEffect, useCallback } from 'react';
-import { SERVICE_TYPES } from '../data/types';
-import type { Client, ServiceType } from '../data/types';
-import { fetchClients, apiCreateClient, apiUpdateClient } from '../data/api';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import type { Client, PriceTier, ServiceType } from '../data/types';
+import { SERVICE_TYPES, unitLabel } from '../data/types';
+import { fetchClients, apiCreateClient, apiUpdateClient, fetchDefaultPrices } from '../data/api';
 import { formatCLP } from '../data/format';
 import './ClientList.css';
 
 const PAGE_SIZE = 20;
+
+function tierRangeLabel(tier: PriceTier): string {
+  if (tier.min_meters === 0 && tier.max_meters === null) return 'Cualquier';
+  if (tier.max_meters === null) return `${tier.min_meters}+`;
+  return `${tier.min_meters}–${tier.max_meters}`;
+}
+
+interface EditingClient {
+  id: string;
+  name: string;
+  rut: string;
+  email: string;
+  phone: string;
+  billing_addr: string;
+  is_active: boolean;
+  prices: { default_price_id: number; price: number | '' }[];
+}
 
 export default function ClientList() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -16,9 +33,15 @@ export default function ClientList() {
   const [showAll, setShowAll] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [editing, setEditing] = useState<Client | null>(null);
+  const [editing, setEditing] = useState<EditingClient | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [tiers, setTiers] = useState<PriceTier[]>([]);
+
+  // Load tiers once
+  useEffect(() => {
+    fetchDefaultPrices().then(setTiers).catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -41,9 +64,15 @@ export default function ClientList() {
   }, [page, search, showAll]);
 
   useEffect(() => { load(); }, [load]);
-
-  // Debounce search — reset page on search change
   useEffect(() => { setPage(1); }, [search, showAll]);
+
+  const tiersGrouped = useMemo(() => {
+    const map: Partial<Record<ServiceType, PriceTier[]>> = {};
+    for (const s of SERVICE_TYPES) {
+      map[s] = tiers.filter((t) => t.service === s).sort((a, b) => a.min_meters - b.min_meters);
+    }
+    return map;
+  }, [tiers]);
 
   function openNew() {
     setIsNew(true);
@@ -55,30 +84,68 @@ export default function ClientList() {
       phone: '',
       billing_addr: '',
       is_active: true,
-      preferentialPrices: {},
+      prices: [],
     });
   }
 
   function openEdit(c: Client) {
     setIsNew(false);
-    setEditing({ ...c, preferentialPrices: { ...c.preferentialPrices } });
+    setEditing({
+      id: c.id,
+      name: c.name,
+      rut: c.rut || '',
+      email: c.email || '',
+      phone: c.phone || '',
+      billing_addr: c.billing_addr || '',
+      is_active: c.is_active,
+      prices: c.prices.map((p) => ({ default_price_id: p.default_price_id, price: p.price })),
+    });
+  }
+
+  function getEditPrice(tierId: number): number | '' {
+    if (!editing) return '';
+    const found = editing.prices.find((p) => p.default_price_id === tierId);
+    return found ? found.price : '';
+  }
+
+  function setEditPrice(tierId: number, val: string) {
+    if (!editing) return;
+    const num = val === '' ? '' : Number(val);
+    const existing = editing.prices.filter((p) => p.default_price_id !== tierId);
+    if (num !== '' && num > 0) {
+      existing.push({ default_price_id: tierId, price: num });
+    }
+    setEditing({ ...editing, prices: existing });
   }
 
   async function save() {
     if (!editing || !editing.name.trim()) return;
-    const cleaned: Partial<Record<ServiceType, number>> = {};
-    for (const s of SERVICE_TYPES) {
-      const v = editing.preferentialPrices[s];
-      if (v !== undefined && v > 0) cleaned[s] = v;
-    }
-    const data = { ...editing, preferentialPrices: cleaned };
+    const cleanPrices = editing.prices
+      .filter((p) => typeof p.price === 'number' && p.price > 0)
+      .map((p) => ({ default_price_id: p.default_price_id, price: p.price as number }));
+
     setSaving(true);
     setError('');
     try {
       if (isNew) {
-        await apiCreateClient(data);
+        await apiCreateClient({
+          name: editing.name,
+          rut: editing.rut || undefined,
+          email: editing.email || undefined,
+          phone: editing.phone || undefined,
+          billing_addr: editing.billing_addr || undefined,
+          prices: cleanPrices,
+        });
       } else {
-        await apiUpdateClient(editing.id, data);
+        await apiUpdateClient(editing.id, {
+          name: editing.name,
+          rut: editing.rut || undefined,
+          email: editing.email || undefined,
+          phone: editing.phone || undefined,
+          billing_addr: editing.billing_addr || undefined,
+          is_active: editing.is_active,
+          prices: cleanPrices,
+        });
       }
       setEditing(null);
       await load();
@@ -89,13 +156,9 @@ export default function ClientList() {
     }
   }
 
-  function setPrefPrice(service: ServiceType, val: string) {
-    if (!editing) return;
-    const num = val === '' ? undefined : Number(val);
-    setEditing({
-      ...editing,
-      preferentialPrices: { ...editing.preferentialPrices, [service]: num },
-    });
+  // Count overrides per client
+  function overrideCount(c: Client): number {
+    return c.prices.length;
   }
 
   return (
@@ -109,16 +172,10 @@ export default function ClientList() {
           onChange={(e) => setSearch(e.target.value)}
         />
         <label>
-          <input
-            type="checkbox"
-            checked={showAll}
-            onChange={(e) => setShowAll(e.target.checked)}
-          />{' '}
-          Mostrar todos
+          <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
+          {' '}Mostrar todos
         </label>
-        <button className="btn-primary" onClick={openNew}>
-          + Nuevo Cliente
-        </button>
+        <button className="btn-primary" onClick={openNew}>+ Nuevo Cliente</button>
       </div>
 
       {error && <div className="error-msg">{error}</div>}
@@ -131,9 +188,7 @@ export default function ClientList() {
             <th>RUT</th>
             <th>Email</th>
             <th>Teléfono</th>
-            <th>Textil</th>
-            <th>UV</th>
-            <th>Texturizado</th>
+            <th>Precios especiales</th>
             <th>Activo</th>
             <th></th>
           </tr>
@@ -146,8 +201,6 @@ export default function ClientList() {
               <td><span className="skeleton-cell wide" /></td>
               <td><span className="skeleton-cell medium" /></td>
               <td><span className="skeleton-cell short" /></td>
-              <td><span className="skeleton-cell short" /></td>
-              <td><span className="skeleton-cell short" /></td>
               <td><span className="skeleton-cell tiny" /></td>
               <td><span className="skeleton-cell tiny" /></td>
             </tr>
@@ -158,17 +211,13 @@ export default function ClientList() {
               <td>{c.rut || '—'}</td>
               <td>{c.email || '—'}</td>
               <td>{c.phone || '—'}</td>
-              <td>{c.preferentialPrices.TEXTIL ? formatCLP(c.preferentialPrices.TEXTIL) : '—'}</td>
-              <td>{c.preferentialPrices.UV ? formatCLP(c.preferentialPrices.UV) : '—'}</td>
-              <td>{c.preferentialPrices.TEXTURIZADO ? formatCLP(c.preferentialPrices.TEXTURIZADO) : '—'}</td>
+              <td>{overrideCount(c) > 0 ? `${overrideCount(c)} override${overrideCount(c) > 1 ? 's' : ''}` : '—'}</td>
               <td>{c.is_active ? '✓' : '✗'}</td>
-              <td>
-                <button className="btn-sm" onClick={() => openEdit(c)}>Editar</button>
-              </td>
+              <td><button className="btn-sm" onClick={() => openEdit(c)}>Editar</button></td>
             </tr>
           ))}
           {!loading && clients.length === 0 && (
-            <tr><td colSpan={9} style={{ textAlign: 'center' }}>Sin resultados</td></tr>
+            <tr><td colSpan={7} style={{ textAlign: 'center' }}>Sin resultados</td></tr>
           )}
         </tbody>
       </table>
@@ -192,37 +241,53 @@ export default function ClientList() {
                 <input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
               </label>
               <label>RUT
-                <input value={editing.rut || ''} onChange={(e) => setEditing({ ...editing, rut: e.target.value })} />
+                <input value={editing.rut} onChange={(e) => setEditing({ ...editing, rut: e.target.value })} />
               </label>
               <label>Email
-                <input value={editing.email || ''} onChange={(e) => setEditing({ ...editing, email: e.target.value })} />
+                <input value={editing.email} onChange={(e) => setEditing({ ...editing, email: e.target.value })} />
               </label>
               <label>Teléfono
-                <input value={editing.phone || ''} onChange={(e) => setEditing({ ...editing, phone: e.target.value })} />
+                <input value={editing.phone} onChange={(e) => setEditing({ ...editing, phone: e.target.value })} />
               </label>
               <label>Dirección facturación
-                <input value={editing.billing_addr || ''} onChange={(e) => setEditing({ ...editing, billing_addr: e.target.value })} />
+                <input value={editing.billing_addr} onChange={(e) => setEditing({ ...editing, billing_addr: e.target.value })} />
               </label>
               <label>
                 <input type="checkbox" checked={editing.is_active} onChange={(e) => setEditing({ ...editing, is_active: e.target.checked })} />
                 {' '}Activo
               </label>
             </div>
-            <h4>Precios preferenciales (CLP/m)</h4>
-            <div className="form-grid">
-              {SERVICE_TYPES.map((s) => (
-                <label key={s}>{s}
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={editing.preferentialPrices[s] ?? ''}
-                    onChange={(e) => setPrefPrice(s, e.target.value)}
-                    placeholder="Sin override"
-                  />
-                </label>
-              ))}
-            </div>
+
+            <h4>Precios preferenciales</h4>
+            <p className="prices-hint">Deja vacío para usar el precio por defecto del rango.</p>
+            {SERVICE_TYPES.map((service) => {
+              const serviceTiers = tiersGrouped[service] || [];
+              if (serviceTiers.length === 0) return null;
+              return (
+                <div key={service} className="pref-service-group">
+                  <span className="pref-service-label">{service}</span>
+                  <div className="pref-tiers">
+                    {serviceTiers.map((tier) => (
+                      <div key={tier.id} className="pref-tier-row">
+                        <span className="pref-tier-range">
+                          {tierRangeLabel(tier)} {unitLabel(service)}
+                        </span>
+                        <span className="pref-tier-default">{formatCLP(tier.price)}</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={getEditPrice(tier.id)}
+                          onChange={(e) => setEditPrice(tier.id, e.target.value)}
+                          placeholder={formatCLP(tier.price)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+
             <div className="modal-actions">
               <button className="btn-primary" onClick={save} disabled={saving}>
                 {saving ? 'Guardando...' : 'Guardar'}

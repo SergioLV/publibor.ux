@@ -1,8 +1,27 @@
-export type ServiceType = 'TEXTIL' | 'UV' | 'TEXTURIZADO';
+export type ServiceType = 'DTF' | 'SUBLIMACION' | 'UV' | 'TEXTURIZADO';
 
-export const SERVICE_TYPES: ServiceType[] = ['TEXTIL', 'UV', 'TEXTURIZADO'];
+export const SERVICE_TYPES: ServiceType[] = ['DTF', 'SUBLIMACION', 'UV', 'TEXTURIZADO'];
 
 export const TAX_PCT = 19;
+
+// A default price tier (from the API)
+export interface PriceTier {
+  id: number;
+  service: ServiceType;
+  min_meters: number;
+  max_meters: number | null; // null = unlimited
+  price: number;
+}
+
+// A client's preferential price override on a specific tier
+export interface ClientPrice {
+  id?: number;
+  default_price_id: number;
+  service: ServiceType;
+  min_meters: number;
+  max_meters: number | null;
+  price: number;
+}
 
 export interface Client {
   id: string;
@@ -12,7 +31,7 @@ export interface Client {
   phone?: string;
   billing_addr?: string;
   is_active: boolean;
-  preferentialPrices: Partial<Record<ServiceType, number>>;
+  prices: ClientPrice[];
   created_at?: string;
   updated_at?: string;
 }
@@ -32,8 +51,12 @@ export interface Order {
   created_at: string;
 }
 
-export interface DefaultPrices {
-  TEXTIL: number | null;
-  UV: number | null;
-  TEXTURIZADO: number | null;
+// Helper: is this service priced per cloth (not per meter)?
+export function isPerCloth(service: ServiceType): boolean {
+  return service === 'TEXTURIZADO';
+}
+
+// Helper: unit label
+export function unitLabel(service: ServiceType): string {
+  return isPerCloth(service) ? 'paño' : 'm';
 }
