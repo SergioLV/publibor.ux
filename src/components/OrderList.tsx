@@ -5,7 +5,7 @@ import type { Order, Client, ServiceType } from '../data/types';
 import { SERVICE_TYPES, unitLabel } from '../data/types';
 import './OrderList.css';
 
-const PAGE_SIZE = 25;
+const PAGE_SIZES = [10, 25, 50, 100];
 
 export default function OrderList() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -18,8 +18,13 @@ export default function OrderList() {
   const [filterClient, setFilterClient] = useState('');
   const [filterService, setFilterService] = useState('');
   const [filterPayment, setFilterPayment] = useState<'unpaid' | 'paid' | 'all'>('unpaid');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [feedback, setFeedback] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selectedOrders, setSelectedOrders] = useState<Map<string, Order>>(new Map());
 
   useEffect(() => {
     fetchClients({ limit: 100 }).then((res) => setClients(res.clients)).catch(() => {});
@@ -39,8 +44,10 @@ export default function OrderList() {
         client_id: filterClient || undefined,
         service: filterService || undefined,
         is_paid: filterPayment === 'all' ? undefined : filterPayment === 'paid',
+        date_from: filterDateFrom || undefined,
+        date_to: filterDateTo || undefined,
         page,
-        limit: PAGE_SIZE,
+        limit: pageSize,
       });
       setOrders(res.orders);
       setTotal(res.total);
@@ -50,12 +57,70 @@ export default function OrderList() {
     } finally {
       setLoading(false);
     }
-  }, [filterClient, filterService, filterPayment, page]);
+  }, [filterClient, filterService, filterPayment, filterDateFrom, filterDateTo, page, pageSize]);
 
   useEffect(() => { loadOrders(); }, [loadOrders]);
-  useEffect(() => { setPage(1); }, [filterClient, filterService, filterPayment]);
+
+  // Reset to page 1 when filters or page size change
+  const filterKey = `${filterClient}|${filterService}|${filterPayment}|${filterDateFrom}|${filterDateTo}|${pageSize}`;
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey);
+    if (page !== 1) setPage(1);
+  }
 
   const pageTotal = orders.reduce((s, o) => s + o.total_amount, 0);
+
+  function toggleSelect(id: string) {
+    const order = orders.find((o) => o.id === id);
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+    setSelectedOrders((prev) => {
+      const next = new Map(prev);
+      if (next.has(id)) next.delete(id); else if (order) next.set(id, order);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    const pageIds = orders.map((o) => o.id);
+    const allPageSelected = pageIds.every((id) => selected.has(id));
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allPageSelected) {
+        pageIds.forEach((id) => next.delete(id));
+      } else {
+        pageIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+    setSelectedOrders((prev) => {
+      const next = new Map(prev);
+      if (allPageSelected) {
+        pageIds.forEach((id) => next.delete(id));
+      } else {
+        orders.forEach((o) => next.set(o.id, o));
+      }
+      return next;
+    });
+  }
+
+  const selectionSummary = useMemo(() => {
+    if (selected.size === 0) return null;
+    const sel = Array.from(selectedOrders.values());
+    const byService: Record<string, { meters: number; total: number }> = {};
+    let grandTotal = 0;
+    for (const o of sel) {
+      if (!byService[o.service]) byService[o.service] = { meters: 0, total: 0 };
+      byService[o.service].meters += o.meters;
+      byService[o.service].total += o.total_amount;
+      grandTotal += o.total_amount;
+    }
+    return { byService, grandTotal, count: sel.length };
+  }, [selected, selectedOrders]);
 
   async function handleTogglePaid(order: Order) {
     try {
@@ -72,6 +137,8 @@ export default function OrderList() {
     setFilterClient('');
     setFilterService('');
     setFilterPayment('unpaid');
+    setFilterDateFrom('');
+    setFilterDateTo('');
     setPage(1);
   }
 
@@ -100,6 +167,12 @@ export default function OrderList() {
             <option value="all">Todas</option>
           </select>
         </label>
+        <label>Desde
+          <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} />
+        </label>
+        <label>Hasta
+          <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} />
+        </label>
         <button className="btn-sm" onClick={clearFilters}>Limpiar</button>
       </div>
 
@@ -107,6 +180,13 @@ export default function OrderList() {
       <table>
         <thead>
           <tr>
+            <th className="th-check">
+              <input
+                type="checkbox"
+                checked={orders.length > 0 && orders.every((o) => selected.has(o.id))}
+                onChange={toggleSelectAll}
+              />
+            </th>
             <th>Fecha</th>
             <th>Cliente</th>
             <th>Servicio</th>
@@ -121,6 +201,7 @@ export default function OrderList() {
         <tbody>
           {loading && Array.from({ length: 5 }).map((_, i) => (
             <tr key={`skel-${i}`} className="skeleton-row">
+              <td><span className="skeleton-cell tiny" /></td>
               <td><span className="skeleton-cell medium" /></td>
               <td><span className="skeleton-cell wide" /></td>
               <td><span className="skeleton-cell medium" /></td>
@@ -132,7 +213,14 @@ export default function OrderList() {
             </tr>
           ))}
           {!loading && orders.map((o) => (
-            <tr key={o.id}>
+            <tr key={o.id} className={selected.has(o.id) ? 'row-selected' : ''}>
+              <td>
+                <input
+                  type="checkbox"
+                  checked={selected.has(o.id)}
+                  onChange={() => toggleSelect(o.id)}
+                />
+              </td>
               <td>{formatDate(o.created_at)}</td>
               <td>{clientMap[o.client_id]?.name || '—'}</td>
               <td>{o.service}</td>
@@ -155,15 +243,42 @@ export default function OrderList() {
             </tr>
           ))}
           {!loading && orders.length === 0 && (
-            <tr><td colSpan={9} style={{ textAlign: 'center' }}>Sin órdenes</td></tr>
+            <tr><td colSpan={10} style={{ textAlign: 'center' }}>Sin órdenes</td></tr>
           )}
         </tbody>
       </table>
       </div>
 
+      {selectionSummary && (
+        <div className="selection-summary">
+          <div className="ss-header">
+            <span className="ss-count">{selectionSummary.count} orden{selectionSummary.count > 1 ? 'es' : ''} seleccionada{selectionSummary.count > 1 ? 's' : ''}</span>
+            <button className="btn-sm" onClick={() => { setSelected(new Set()); setSelectedOrders(new Map()); }}>Deseleccionar</button>
+          </div>
+          <div className="ss-services">
+            {Object.entries(selectionSummary.byService).map(([svc, data]) => (
+              <div key={svc} className="ss-service-item">
+                <span className="ss-service-name">{svc}</span>
+                <span className="ss-service-qty">{data.meters} {unitLabel(svc as ServiceType)}</span>
+                <span className="ss-service-total">{formatCLP(data.total)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="ss-grand-total">
+            <span>Total selección</span>
+            <span className="ss-grand-amount">{formatCLP(selectionSummary.grandTotal)}</span>
+          </div>
+        </div>
+      )}
+
       <div className="order-footer">
         <span>{total} órdenes — Página: {formatCLP(pageTotal)}</span>
         <div className="pagination">
+          <label className="page-size-label">
+            <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
+              {PAGE_SIZES.map((s) => <option key={s} value={s}>{s} por página</option>)}
+            </select>
+          </label>
           <button disabled={page <= 1} onClick={() => setPage(page - 1)}>← Anterior</button>
           <span>Pág {page} de {Math.max(totalPages, 1)}</span>
           <button disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Siguiente →</button>

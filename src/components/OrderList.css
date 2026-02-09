@@ -193,3 +193,103 @@ input[type="checkbox"]:checked::after {
   font-size: 0.7rem;
   letter-spacing: 0.3px;
 }
+
+/* Selection checkbox column */
+.th-check {
+  width: 36px;
+  text-align: center;
+}
+
+tr.row-selected td {
+  background: var(--color-primary-dim);
+}
+
+/* Selection summary */
+.selection-summary {
+  margin-top: 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.ss-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.ss-count {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.ss-services {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.ss-service-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+}
+
+.ss-service-name {
+  font-weight: 600;
+  color: var(--color-text);
+  min-width: 110px;
+}
+
+.ss-service-qty {
+  color: var(--color-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.ss-service-total {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.ss-grand-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.85rem;
+  color: var(--color-text-dim);
+  font-weight: 500;
+}
+
+.ss-grand-amount {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Page size selector */
+.page-size-label select {
+  padding: 0.3rem 0.5rem;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-dim);
+  font-size: 0.8rem;
+  outline: none;
+  cursor: pointer;
+}
+.page-size-label select:focus {
+  border-color: var(--color-primary);
+}

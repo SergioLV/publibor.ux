@@ -241,6 +241,8 @@ export interface FetchOrdersParams {
   client_id?: string;
   service?: string;
   is_paid?: boolean;
+  date_from?: string;
+  date_to?: string;
   page?: number;
   limit?: number;
 }
@@ -257,6 +259,8 @@ export async function fetchOrders(params: FetchOrdersParams = {}): Promise<Fetch
   if (params.client_id) qs.set('client_id', params.client_id);
   if (params.service) qs.set('service', params.service);
   if (params.is_paid !== undefined) qs.set('is_paid', String(params.is_paid));
+  if (params.date_from) qs.set('date_from', params.date_from);
+  if (params.date_to) qs.set('date_to', params.date_to);
   if (params.page) qs.set('page', String(params.page));
   if (params.limit) qs.set('limit', String(params.limit));
 
@@ -319,30 +323,27 @@ export async function downloadCotizacion(data: {
   meters: number;
   unit_price?: number;
 }): Promise<void> {
-  const body: Record<string, unknown> = {
+  const payload: Record<string, unknown> = {
     client_id: data.client_id,
     service: data.service,
     meters: data.meters,
   };
-  if (data.description) body.description = data.description;
-  if (data.unit_price !== undefined) body.unit_price = data.unit_price;
+  if (data.description) payload.description = data.description;
+  if (data.unit_price !== undefined) payload.unit_price = data.unit_price;
 
   const res = await fetch(`${API_BASE}/cotizacion`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ data: payload }),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`API ${res.status}: ${text || res.statusText}`);
   }
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `cotizacion-${data.client_id}-${Date.now()}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const json = await res.json();
+  const bytes = atob(json.data);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  const blob = new Blob([arr], { type: 'application/pdf' });
+  window.open(URL.createObjectURL(blob));
 }
