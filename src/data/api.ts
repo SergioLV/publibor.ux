@@ -303,3 +303,9 @@ export async function apiUpdateOrder(id: string, data: {
   });
   return mapApiOrder(res.data);
 }
+
+// --- Cotización PDF ---
+
+export function getCotizacionUrl(orderId: string): string {
+  return `${API_BASE}/orders/${orderId}/cotizacion`;
+}

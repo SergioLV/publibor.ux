@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { fetchClients, fetchOrders, apiUpdateOrder } from '../data/api';
+import { fetchClients, fetchOrders, apiUpdateOrder, getCotizacionUrl } from '../data/api';
 import { formatCLP, formatDate } from '../data/format';
 import type { Order, Client, ServiceType } from '../data/types';
 import { SERVICE_TYPES, unitLabel } from '../data/types';
@@ -115,6 +115,7 @@ export default function OrderList() {
             <th>Precio Unit.</th>
             <th>Total</th>
             <th>Pagado</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -126,6 +127,7 @@ export default function OrderList() {
               <td><span className="skeleton-cell short" /></td>
               <td><span className="skeleton-cell short" /></td>
               <td><span className="skeleton-cell short" /></td>
+              <td><span className="skeleton-cell tiny" /></td>
               <td><span className="skeleton-cell tiny" /></td>
             </tr>
           ))}
@@ -145,10 +147,15 @@ export default function OrderList() {
                   onChange={() => handleTogglePaid(o)}
                 />
               </td>
+              <td>
+                <a href={getCotizacionUrl(o.id)} target="_blank" rel="noopener noreferrer" className="btn-sm btn-pdf" title="Descargar cotización">
+                  PDF
+                </a>
+              </td>
             </tr>
           ))}
           {!loading && orders.length === 0 && (
-            <tr><td colSpan={8} style={{ textAlign: 'center' }}>Sin órdenes</td></tr>
+            <tr><td colSpan={9} style={{ textAlign: 'center' }}>Sin órdenes</td></tr>
           )}
         </tbody>
       </table>

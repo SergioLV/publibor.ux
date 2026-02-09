@@ -183,3 +183,13 @@ input[type="checkbox"]:checked::after {
   font-size: 0.85rem;
   margin-bottom: 1rem;
 }
+
+/* PDF download button */
+.btn-pdf {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.3px;
+}
