@@ -531,3 +531,25 @@
 .price-override-input-wrap input:focus {
   color: var(--color-primary);
 }
+
+/* Cotización button */
+.btn-cotizacion {
+  padding: 0.6rem 1.2rem;
+  background: var(--color-surface-2);
+  color: var(--color-text-dim);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-cotizacion:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.btn-cotizacion:disabled {
+  opacity: 0.3;
+  cursor: default;
+}

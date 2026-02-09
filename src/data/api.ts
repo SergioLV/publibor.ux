@@ -309,3 +309,40 @@ export async function apiUpdateOrder(id: string, data: {
 export function getCotizacionUrl(orderId: string): string {
   return `${API_BASE}/orders/${orderId}/cotizacion`;
 }
+
+// --- Cotización PDF (pre-order quote) ---
+
+export async function downloadCotizacion(data: {
+  client_id: number;
+  service: string;
+  description?: string;
+  meters: number;
+  unit_price?: number;
+}): Promise<void> {
+  const body: Record<string, unknown> = {
+    client_id: data.client_id,
+    service: data.service,
+    meters: data.meters,
+  };
+  if (data.description) body.description = data.description;
+  if (data.unit_price !== undefined) body.unit_price = data.unit_price;
+
+  const res = await fetch(`${API_BASE}/cotizacion`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`API ${res.status}: ${text || res.statusText}`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `cotizacion-${data.client_id}-${Date.now()}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import type { Client, PriceTier, ServiceType } from '../data/types';
 import { SERVICE_TYPES, unitLabel, isPerCloth } from '../data/types';
 import { getEffectivePrice, calculateOrder } from '../data/store';
-import { fetchClients, fetchClientById, fetchDefaultPrices, apiCreateOrder, fetchOrders } from '../data/api';
+import { fetchClients, fetchClientById, fetchDefaultPrices, apiCreateOrder, fetchOrders, downloadCotizacion } from '../data/api';
 import { formatCLP, formatDate } from '../data/format';
 import type { Order } from '../data/types';
 import './NewOrder.css';
@@ -25,6 +25,7 @@ export default function NewOrder({ onNavigate }: Props) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   const [loadingClients, setLoadingClients] = useState(false);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
 
@@ -110,6 +111,25 @@ export default function NewOrder({ onNavigate }: Props) {
       setError(e instanceof Error ? e.message : 'Error creando orden');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleCotizacion() {
+    setError('');
+    if (!clientId || !service || !calc) return;
+    setGeneratingPdf(true);
+    try {
+      await downloadCotizacion({
+        client_id: Number(clientId),
+        service: service as string,
+        description: description.trim() || undefined,
+        meters: Number(quantity),
+        unit_price: isManualOverride ? Number(priceOverride) : undefined,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error generando cotización');
+    } finally {
+      setGeneratingPdf(false);
     }
   }
 
@@ -325,6 +345,9 @@ export default function NewOrder({ onNavigate }: Props) {
         </div>
         <div className="summary-total">
           <span className="st-amount">{calc ? formatCLP(calc.total_amount) : '$0'}</span>
+          <button className="btn-cotizacion" onClick={handleCotizacion} disabled={!calc || !!priceError || generatingPdf}>
+            {generatingPdf ? 'Generando...' : 'Cotización PDF'}
+          </button>
           <button className="btn-submit" onClick={handleSubmit} disabled={!calc || !!priceError || submitting}>
             {submitting ? 'Creando...' : 'Crear Orden'}
           </button>
