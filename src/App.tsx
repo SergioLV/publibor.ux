@@ -55,7 +55,7 @@ function App() {
       {mobileOpen && <div className="sidebar-backdrop" onClick={() => setMobileOpen(false)} />}
       <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-brand">
-          {!collapsed && <span>Publibor</span>}
+          {!collapsed && <div className="brand-text"><span className="brand-name">Publibor</span><span className="brand-desc">Software de gestión</span></div>}
           <button className="collapse-btn" onClick={() => { setCollapsed(!collapsed); setMobileOpen(false); }} aria-label="Toggle sidebar">
             {collapsed ? '▸' : '◂'}
           </button>

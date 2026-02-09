@@ -233,64 +233,89 @@ export default function ClientList() {
       {editing && (
         <div className="modal-overlay" onClick={() => setEditing(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>{isNew ? 'Nuevo Cliente' : 'Editar Cliente'}</h3>
-            <div className="form-grid">
-              <label>Nombre *
-                <input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
-              </label>
-              <label>RUT
-                <input value={editing.rut} onChange={(e) => setEditing({ ...editing, rut: e.target.value })} />
-              </label>
-              <label>Email
-                <input value={editing.email} onChange={(e) => setEditing({ ...editing, email: e.target.value })} />
-              </label>
-              <label>Teléfono
-                <input value={editing.phone} onChange={(e) => setEditing({ ...editing, phone: e.target.value })} />
-              </label>
-              <label>Dirección facturación
-                <input value={editing.billing_addr} onChange={(e) => setEditing({ ...editing, billing_addr: e.target.value })} />
-              </label>
-              <label>
-                <input type="checkbox" checked={editing.is_active} onChange={(e) => setEditing({ ...editing, is_active: e.target.checked })} />
-                {' '}Activo
-              </label>
+            <div className="modal-header">
+              <h3>{isNew ? 'Nuevo Cliente' : 'Editar Cliente'}</h3>
+              <button className="modal-close" onClick={() => setEditing(null)}>✕</button>
             </div>
 
-            <h4>Precios preferenciales</h4>
-            <p className="prices-hint">Deja vacío para usar el precio por defecto del rango.</p>
-            {SERVICE_TYPES.map((service) => {
-              const serviceTiers = tiersGrouped[service] || [];
-              if (serviceTiers.length === 0) return null;
-              return (
-                <div key={service} className="pref-service-group">
-                  <span className="pref-service-label">{service}</span>
-                  <div className="pref-tiers">
-                    {serviceTiers.map((tier) => (
-                      <div key={tier.id} className="pref-tier-row">
-                        <span className="pref-tier-range">
-                          {tierRangeLabel(tier)} {unitLabel(service)}
-                        </span>
-                        <span className="pref-tier-default">{formatCLP(tier.price)}</span>
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={getEditPrice(tier.id)}
-                          onChange={(e) => setEditPrice(tier.id, e.target.value)}
-                          placeholder={formatCLP(tier.price)}
-                        />
+            <div className="modal-section">
+              <div className="section-label">Información general</div>
+              <div className="form-grid">
+                <label className="span-2">Nombre *
+                  <input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="Nombre de la empresa" />
+                </label>
+                <label>RUT
+                  <input value={editing.rut} onChange={(e) => setEditing({ ...editing, rut: e.target.value })} placeholder="12.345.678-9" />
+                </label>
+                <label>Teléfono
+                  <input value={editing.phone} onChange={(e) => setEditing({ ...editing, phone: e.target.value })} placeholder="+56 9 1234 5678" />
+                </label>
+                <label>Email
+                  <input value={editing.email} onChange={(e) => setEditing({ ...editing, email: e.target.value })} placeholder="contacto@empresa.cl" />
+                </label>
+                <label>Dirección facturación
+                  <input value={editing.billing_addr} onChange={(e) => setEditing({ ...editing, billing_addr: e.target.value })} placeholder="Av. Principal 123" />
+                </label>
+              </div>
+              {!isNew && (
+                <label className="active-toggle">
+                  <input type="checkbox" checked={editing.is_active} onChange={(e) => setEditing({ ...editing, is_active: e.target.checked })} />
+                  <span className={`toggle-label ${editing.is_active ? 'on' : 'off'}`}>
+                    {editing.is_active ? 'Cliente activo' : 'Cliente inactivo'}
+                  </span>
+                </label>
+              )}
+            </div>
+
+            <div className="modal-section">
+              <div className="section-label">Precios preferenciales</div>
+              <p className="prices-hint">Ingresa un precio solo si el cliente tiene tarifa especial. Los campos vacíos usan el precio por defecto.</p>
+              <div className="pref-services">
+                {SERVICE_TYPES.map((service) => {
+                  const serviceTiers = tiersGrouped[service] || [];
+                  if (serviceTiers.length === 0) return null;
+                  return (
+                    <div key={service} className="pref-service-card">
+                      <div className="pref-card-header">
+                        <span className="pref-card-service">{service}</span>
+                        <span className="pref-card-unit">por {unitLabel(service)}</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+                      <div className="pref-card-tiers">
+                        {serviceTiers.map((tier) => {
+                          const val = getEditPrice(tier.id);
+                          const hasOverride = val !== '' && Number(val) > 0;
+                          return (
+                            <div key={tier.id} className={`pref-tier-row ${hasOverride ? 'has-override' : ''}`}>
+                              <div className="pref-tier-info">
+                                <span className="pref-tier-range">{tierRangeLabel(tier)} {unitLabel(service)}</span>
+                                <span className="pref-tier-default">Base: {formatCLP(tier.price)}</span>
+                              </div>
+                              <div className="pref-tier-input-wrap">
+                                <span className="pref-input-prefix">$</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  value={val}
+                                  onChange={(e) => setEditPrice(tier.id, e.target.value)}
+                                  placeholder={String(tier.price)}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
 
             <div className="modal-actions">
-              <button className="btn-primary" onClick={save} disabled={saving}>
-                {saving ? 'Guardando...' : 'Guardar'}
-              </button>
               <button onClick={() => setEditing(null)}>Cancelar</button>
+              <button className="btn-primary" onClick={save} disabled={saving || !editing.name.trim()}>
+                {saving ? 'Guardando...' : isNew ? 'Crear Cliente' : 'Guardar Cambios'}
+              </button>
             </div>
           </div>
         </div>
