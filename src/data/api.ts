@@ -1,4 +1,4 @@
-import type { Client, ClientPrice, PriceTier, ServiceType } from './types';
+import type { Client, ClientPrice, Order, PriceTier, ServiceType } from './types';
 
 const API_BASE = 'https://s8agiab37c.execute-api.us-east-1.amazonaws.com/prod/api';
 
@@ -199,4 +199,107 @@ export async function apiUpdateClient(id: string, data: {
     body: JSON.stringify(body),
   });
   return mapApiClient(res.data);
+}
+
+// --- Orders API ---
+
+interface ApiOrder {
+  id: number;
+  client_id: number;
+  service: string;
+  description: string | null;
+  meters: number;
+  unit_price: number;
+  subtotal: number;
+  tax_pct: number;
+  tax_amount: number;
+  total_amount: number;
+  is_paid: boolean;
+  paid_at: string | null;
+  created_at: string;
+}
+
+function mapApiOrder(api: ApiOrder): Order {
+  return {
+    id: String(api.id),
+    client_id: String(api.client_id),
+    service: api.service as ServiceType,
+    description: api.description ?? undefined,
+    meters: api.meters,
+    unit_price: api.unit_price,
+    subtotal: api.subtotal,
+    tax_pct: api.tax_pct,
+    tax_amount: api.tax_amount,
+    total_amount: api.total_amount,
+    is_paid: api.is_paid,
+    paid_at: api.paid_at,
+    created_at: api.created_at,
+  };
+}
+
+export interface FetchOrdersParams {
+  client_id?: string;
+  service?: string;
+  is_paid?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export interface FetchOrdersResult {
+  orders: Order[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+export async function fetchOrders(params: FetchOrdersParams = {}): Promise<FetchOrdersResult> {
+  const qs = new URLSearchParams();
+  if (params.client_id) qs.set('client_id', params.client_id);
+  if (params.service) qs.set('service', params.service);
+  if (params.is_paid !== undefined) qs.set('is_paid', String(params.is_paid));
+  if (params.page) qs.set('page', String(params.page));
+  if (params.limit) qs.set('limit', String(params.limit));
+
+  const query = qs.toString();
+  const res = await apiFetch<PaginatedResponse<ApiOrder>>(`/orders${query ? `?${query}` : ''}`);
+
+  return {
+    orders: res.data.map(mapApiOrder),
+    total: res.total,
+    page: res.page,
+    totalPages: res.total_pages,
+  };
+}
+
+export async function apiCreateOrder(data: {
+  client_id: number;
+  service: string;
+  description?: string;
+  meters: number;
+  unit_price?: number;
+}): Promise<Order> {
+  const body: Record<string, unknown> = {
+    client_id: data.client_id,
+    service: data.service,
+    meters: data.meters,
+  };
+  if (data.description) body.description = data.description;
+  if (data.unit_price !== undefined) body.unit_price = data.unit_price;
+
+  const res = await apiFetch<{ data: ApiOrder }>('/orders', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+  return mapApiOrder(res.data);
+}
+
+export async function apiUpdateOrder(id: string, data: {
+  description?: string;
+  is_paid?: boolean;
+}): Promise<Order> {
+  const res = await apiFetch<{ data: ApiOrder }>(`/orders/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+  return mapApiOrder(res.data);
 }

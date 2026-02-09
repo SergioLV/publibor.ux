@@ -470,3 +470,64 @@
   font-size: 0.8rem;
   color: var(--color-text-muted);
 }
+
+/* Description input */
+.description-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: inherit;
+}
+.description-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-dim);
+}
+
+/* Price override */
+.price-override-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.price-override-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-dim);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.price-override-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.5rem;
+  width: 160px;
+}
+
+.price-override-input-wrap input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  font-size: 0.95rem;
+  font-weight: 600;
+  outline: none;
+  width: 100%;
+  min-width: 0;
+}
+
+.price-override-input-wrap input:focus {
+  color: var(--color-primary);
+}

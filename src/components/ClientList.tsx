@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Client, PriceTier, ServiceType } from '../data/types';
 import { SERVICE_TYPES, unitLabel } from '../data/types';
-import { fetchClients, apiCreateClient, apiUpdateClient, fetchDefaultPrices } from '../data/api';
+import { fetchClients, apiCreateClient, apiUpdateClient, fetchDefaultPrices, fetchClientById } from '../data/api';
 import { formatCLP } from '../data/format';
 import './ClientList.css';
 
@@ -88,18 +88,24 @@ export default function ClientList() {
     });
   }
 
-  function openEdit(c: Client) {
+  async function openEdit(c: Client) {
     setIsNew(false);
-    setEditing({
-      id: c.id,
-      name: c.name,
-      rut: c.rut || '',
-      email: c.email || '',
-      phone: c.phone || '',
-      billing_addr: c.billing_addr || '',
-      is_active: c.is_active,
-      prices: c.prices.map((p) => ({ default_price_id: p.default_price_id, price: p.price })),
-    });
+    setError('');
+    try {
+      const full = await fetchClientById(c.id);
+      setEditing({
+        id: full.id,
+        name: full.name,
+        rut: full.rut || '',
+        email: full.email || '',
+        phone: full.phone || '',
+        billing_addr: full.billing_addr || '',
+        is_active: full.is_active,
+        prices: full.prices.map((p) => ({ default_price_id: p.default_price_id, price: p.price })),
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error cargando cliente');
+    }
   }
 
   function getEditPrice(tierId: number): number | '' {
@@ -156,11 +162,6 @@ export default function ClientList() {
     }
   }
 
-  // Count overrides per client
-  function overrideCount(c: Client): number {
-    return c.prices.length;
-  }
-
   return (
     <div className="client-list">
       <div className="client-toolbar">
@@ -188,7 +189,6 @@ export default function ClientList() {
             <th>RUT</th>
             <th>Email</th>
             <th>Teléfono</th>
-            <th>Precios especiales</th>
             <th>Activo</th>
             <th></th>
           </tr>
@@ -200,7 +200,6 @@ export default function ClientList() {
               <td><span className="skeleton-cell medium" /></td>
               <td><span className="skeleton-cell wide" /></td>
               <td><span className="skeleton-cell medium" /></td>
-              <td><span className="skeleton-cell short" /></td>
               <td><span className="skeleton-cell tiny" /></td>
               <td><span className="skeleton-cell tiny" /></td>
             </tr>
@@ -211,13 +210,12 @@ export default function ClientList() {
               <td>{c.rut || '—'}</td>
               <td>{c.email || '—'}</td>
               <td>{c.phone || '—'}</td>
-              <td>{overrideCount(c) > 0 ? `${overrideCount(c)} override${overrideCount(c) > 1 ? 's' : ''}` : '—'}</td>
               <td>{c.is_active ? '✓' : '✗'}</td>
               <td><button className="btn-sm" onClick={() => openEdit(c)}>Editar</button></td>
             </tr>
           ))}
           {!loading && clients.length === 0 && (
-            <tr><td colSpan={7} style={{ textAlign: 'center' }}>Sin resultados</td></tr>
+            <tr><td colSpan={6} style={{ textAlign: 'center' }}>Sin resultados</td></tr>
           )}
         </tbody>
       </table>

@@ -1,8 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
-import { getOrders } from '../data/store';
-import { fetchClients } from '../data/api';
+import { fetchClients, fetchOrders } from '../data/api';
 import { SERVICE_TYPES } from '../data/types';
-import type { Client } from '../data/types';
+import type { Client, Order } from '../data/types';
 import { formatCLP } from '../data/format';
 import './Dashboard.css';
 
@@ -11,11 +10,12 @@ interface Props {
 }
 
 export default function Dashboard({ onNavigate }: Props) {
-  const orders = getOrders();
+  const [orders, setOrders] = useState<Order[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
 
   useEffect(() => {
     fetchClients({ limit: 100 }).then((res) => setClients(res.clients)).catch(() => {});
+    fetchOrders({ limit: 100 }).then((res) => setOrders(res.orders)).catch(() => {});
   }, []);
 
   const stats = useMemo(() => {

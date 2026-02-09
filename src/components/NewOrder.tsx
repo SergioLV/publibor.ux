@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { Client, PriceTier, ServiceType } from '../data/types';
 import { SERVICE_TYPES, unitLabel, isPerCloth } from '../data/types';
-import { getEffectivePrice, calculateOrder, createOrder, getOrders } from '../data/store';
-import { fetchClients, fetchClientById, fetchDefaultPrices } from '../data/api';
+import { getEffectivePrice, calculateOrder } from '../data/store';
+import { fetchClients, fetchClientById, fetchDefaultPrices, apiCreateOrder, fetchOrders } from '../data/api';
 import { formatCLP, formatDate } from '../data/format';
+import type { Order } from '../data/types';
 import './NewOrder.css';
 
 interface Props {
@@ -17,18 +18,20 @@ export default function NewOrder({ onNavigate }: Props) {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [service, setService] = useState<ServiceType | ''>('');
   const [quantity, setQuantity] = useState('');
+  const [description, setDescription] = useState('');
+  const [priceOverride, setPriceOverride] = useState<string>('');
   const [clientSearch, setClientSearch] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [loadingClients, setLoadingClients] = useState(false);
+  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
 
-  // Load tiers once
   useEffect(() => {
     fetchDefaultPrices().then(setTiers).catch(() => {});
   }, []);
 
-  // Fetch clients for dropdown
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (!clientSearch && !showDropdown) return;
@@ -36,58 +39,55 @@ export default function NewOrder({ onNavigate }: Props) {
       try {
         const res = await fetchClients({ search: clientSearch || undefined, active: true, limit: 20 });
         setActiveClients(res.clients);
-      } catch {
-        // silent
-      } finally {
-        setLoadingClients(false);
-      }
+      } catch { /* silent */ }
+      finally { setLoadingClients(false); }
     }, 300);
     return () => clearTimeout(timer);
   }, [clientSearch, showDropdown]);
 
-  // Fetch selected client details
   useEffect(() => {
-    if (!clientId) { setSelectedClient(null); return; }
+    if (!clientId) { setSelectedClient(null); setRecentOrders([]); return; }
     fetchClientById(clientId).then(setSelectedClient).catch(() => setSelectedClient(null));
+    fetchOrders({ client_id: clientId, limit: 3 })
+      .then((res) => setRecentOrders(res.orders))
+      .catch(() => setRecentOrders([]));
   }, [clientId]);
 
   const filteredClients = activeClients;
 
-  // Available services (those that have tiers)
   const availableServices = useMemo(() => {
     const services = new Set(tiers.map((t) => t.service));
     return SERVICE_TYPES.filter((s) => services.has(s));
   }, [tiers]);
 
-  // Calculate price based on tier + client override
-  const calc = useMemo(() => {
+  // Auto-resolved price from tier + client override
+  const autoPrice = useMemo(() => {
     if (!selectedClient || !service || !quantity || Number(quantity) < (isPerCloth(service as ServiceType) ? 1 : 0.1)) return null;
     const q = Number(quantity);
-    const result = getEffectivePrice(selectedClient, tiers, service as ServiceType, q);
-    if (!result) return null;
-    return { unitPrice: result.price, isOverride: result.isOverride, tier: result.tier, ...calculateOrder(result.price, q) };
+    return getEffectivePrice(selectedClient, tiers, service as ServiceType, q);
   }, [selectedClient, service, quantity, tiers]);
+
+  // Final price: user override or auto-resolved
+  const finalPrice = priceOverride && Number(priceOverride) > 0 ? Number(priceOverride) : autoPrice?.price ?? null;
+  const isManualOverride = priceOverride !== '' && Number(priceOverride) > 0 && autoPrice && Number(priceOverride) !== autoPrice.price;
+
+  const calc = useMemo(() => {
+    if (!finalPrice || !quantity || Number(quantity) < 0.1) return null;
+    const q = Number(quantity);
+    return { unitPrice: finalPrice, tier: autoPrice?.tier ?? null, isOverride: autoPrice?.isOverride ?? false, ...calculateOrder(finalPrice, q) };
+  }, [finalPrice, quantity, autoPrice]);
 
   const priceError = useMemo(() => {
     if (!service || !quantity || Number(quantity) < 0.1) return '';
     const q = Number(quantity);
     const serviceTiers = tiers.filter((t) => t.service === service);
     if (serviceTiers.length === 0) return `No hay precios configurados para ${service}`;
-    // Check if quantity falls in any tier
     const matched = serviceTiers.some((t) => q >= t.min_meters && (t.max_meters === null || q <= t.max_meters));
     if (!matched) return `No hay rango de precio para ${q} ${unitLabel(service as ServiceType)} en ${service}`;
     return '';
   }, [service, quantity, tiers]);
 
-  const recentOrders = useMemo(() => {
-    if (!clientId) return [];
-    return getOrders()
-      .filter((o) => o.client_id === clientId)
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 3);
-  }, [clientId]);
-
-  function handleSubmit() {
+  async function handleSubmit() {
     setError('');
     if (!clientId) { setError('Seleccione un cliente'); return; }
     if (!service) { setError('Seleccione tipo de servicio'); return; }
@@ -95,8 +95,22 @@ export default function NewOrder({ onNavigate }: Props) {
     if (!quantity || Number(quantity) < minQty) { setError(`Cantidad debe ser ≥ ${minQty}`); return; }
     if (priceError) { setError(priceError); return; }
     if (!calc) return;
-    createOrder(clientId, service as ServiceType, Number(quantity), calc.unitPrice);
-    setSuccess(true);
+
+    setSubmitting(true);
+    try {
+      await apiCreateOrder({
+        client_id: Number(clientId),
+        service: service as string,
+        description: description.trim() || undefined,
+        meters: Number(quantity),
+        unit_price: isManualOverride ? Number(priceOverride) : undefined,
+      });
+      setSuccess(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error creando orden');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function selectClient(id: string, name: string) {
@@ -111,8 +125,11 @@ export default function NewOrder({ onNavigate }: Props) {
     setSelectedClient(null);
     setService('');
     setQuantity('');
+    setDescription('');
+    setPriceOverride('');
     setClientSearch('');
     setError('');
+    setRecentOrders([]);
   }
 
   const step = !clientId ? 1 : !service ? 2 : 3;
@@ -204,7 +221,7 @@ export default function NewOrder({ onNavigate }: Props) {
             <button
               key={s}
               className={`service-option ${service === s ? 'selected' : ''}`}
-              onClick={() => { setService(s); setQuantity(''); }}
+              onClick={() => { setService(s); setQuantity(''); setPriceOverride(''); }}
             >
               <span className="so-name">{s}</span>
               <span className="so-unit">por {unitLabel(s)}</span>
@@ -213,12 +230,12 @@ export default function NewOrder({ onNavigate }: Props) {
         </div>
       </div>
 
-      {/* Step 3: Quantity */}
+      {/* Step 3: Quantity + Description */}
       <div className="no-card">
         <div className="no-card-head">
           <span className="no-card-num">3</span>
           <span className="no-card-title">
-            {service && isPerCloth(service as ServiceType) ? 'Cantidad de telas' : 'Cantidad en metros'}
+            {service && isPerCloth(service as ServiceType) ? 'Cantidad de paños' : 'Cantidad en metros'}
           </span>
         </div>
         <input
@@ -231,13 +248,44 @@ export default function NewOrder({ onNavigate }: Props) {
           placeholder="0"
         />
         {priceError && <div className="error-msg" style={{ marginTop: '0.5rem' }}>{priceError}</div>}
-        {calc && (
+        {autoPrice && (
           <div className="tier-info">
-            Rango: {calc.tier.min_meters}{calc.tier.max_meters ? `–${calc.tier.max_meters}` : '+'} {unitLabel(service as ServiceType)}
-            {' · '}Precio: {formatCLP(calc.unitPrice)}/{unitLabel(service as ServiceType)}
-            {calc.isOverride && <span className="override-badge">Precio especial</span>}
+            Rango: {autoPrice.tier.min_meters}{autoPrice.tier.max_meters ? `–${autoPrice.tier.max_meters}` : '+'} {unitLabel(service as ServiceType)}
+            {' · '}Precio sugerido: {formatCLP(autoPrice.price)}/{unitLabel(service as ServiceType)}
+            {autoPrice.isOverride && <span className="override-badge">Precio especial</span>}
           </div>
         )}
+        {autoPrice && (
+          <div className="price-override-row" style={{ marginTop: '0.5rem' }}>
+            <label className="price-override-label">
+              Precio unitario (CLP/{unitLabel(service as ServiceType)})
+              <div className="price-override-input-wrap">
+                <span className="price-prefix">$</span>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={priceOverride}
+                  onChange={(e) => setPriceOverride(e.target.value)}
+                  placeholder={String(autoPrice.price)}
+                />
+              </div>
+            </label>
+            {isManualOverride && (
+              <button className="btn-sm" onClick={() => setPriceOverride('')} style={{ marginTop: '0.25rem' }}>
+                Usar precio sugerido
+              </button>
+            )}
+          </div>
+        )}
+        <input
+          className="description-input"
+          type="text"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Descripción (opcional)"
+          style={{ marginTop: '0.75rem' }}
+        />
       </div>
 
       {/* Recent orders */}
@@ -263,7 +311,7 @@ export default function NewOrder({ onNavigate }: Props) {
       <div className={`summary-bar ${calc ? 'ready' : ''}`}>
         <div className="summary-details">
           <div className="sd-item">
-            <span className="sd-label">Precio</span>
+            <span className="sd-label">Precio{isManualOverride ? ' (manual)' : ''}</span>
             <span className="sd-value">{calc ? formatCLP(calc.unitPrice) + '/' + unitLabel(service as ServiceType) : '—'}</span>
           </div>
           <div className="sd-item">
@@ -277,8 +325,8 @@ export default function NewOrder({ onNavigate }: Props) {
         </div>
         <div className="summary-total">
           <span className="st-amount">{calc ? formatCLP(calc.total_amount) : '$0'}</span>
-          <button className="btn-submit" onClick={handleSubmit} disabled={!calc || !!priceError}>
-            Crear Orden
+          <button className="btn-submit" onClick={handleSubmit} disabled={!calc || !!priceError || submitting}>
+            {submitting ? 'Creando...' : 'Crear Orden'}
           </button>
         </div>
       </div>

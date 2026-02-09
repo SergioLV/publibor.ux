@@ -40,6 +40,7 @@ export interface Order {
   id: string;
   client_id: string;
   service: ServiceType;
+  description?: string;
   meters: number;
   unit_price: number;
   subtotal: number;

@@ -9,7 +9,10 @@ import Prices from './components/Prices';
 type View = 'dashboard' | 'clients' | 'new-order' | 'orders' | 'prices';
 
 function App() {
-  const [view, setView] = useState<View>('dashboard');
+  const [view, setView] = useState<View>(() => {
+    const saved = localStorage.getItem('publibor-view') as View | null;
+    return saved && ['dashboard', 'clients', 'new-order', 'orders', 'prices'].includes(saved) ? saved : 'dashboard';
+  });
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('publibor-theme') as 'dark' | 'light') || 'light';
   });
@@ -25,23 +28,24 @@ function App() {
 
   function navigate(v: View) {
     setView(v);
+    localStorage.setItem('publibor-view', v);
     setMobileOpen(false);
   }
 
   const navItems: { key: View; icon: string; label: string }[] = [
-    { key: 'dashboard', icon: '◈', label: 'Dashboard' },
-    { key: 'clients', icon: '⊞', label: 'Clientes' },
-    { key: 'new-order', icon: '＋', label: 'Nueva Orden' },
-    { key: 'orders', icon: '☰', label: 'Órdenes' },
-    { key: 'prices', icon: '◎', label: 'Precios' },
+    { key: 'dashboard', icon: '📊', label: 'Dashboard' },
+    { key: 'clients', icon: '👥', label: 'Clientes' },
+    { key: 'new-order', icon: '➕', label: 'Nueva Orden' },
+    { key: 'orders', icon: '📋', label: 'Órdenes' },
+    { key: 'prices', icon: '💲', label: 'Precios' },
   ];
 
   const viewMeta: Record<View, { label: string; icon: string; description: string }> = {
-    dashboard: { label: 'Dashboard', icon: '◈', description: 'Resumen general' },
-    clients: { label: 'Clientes', icon: '⊞', description: 'Gestión de clientes' },
-    'new-order': { label: 'Nueva Orden', icon: '＋', description: 'Crear orden de servicio' },
-    orders: { label: 'Órdenes', icon: '☰', description: 'Historial de órdenes' },
-    prices: { label: 'Precios', icon: '◎', description: 'Precios por defecto' },
+    dashboard: { label: 'Dashboard', icon: '📊', description: 'Resumen general' },
+    clients: { label: 'Clientes', icon: '👥', description: 'Gestión de clientes' },
+    'new-order': { label: 'Nueva Orden', icon: '➕', description: 'Crear orden de servicio' },
+    orders: { label: 'Órdenes', icon: '📋', description: 'Historial de órdenes' },
+    prices: { label: 'Precios', icon: '💲', description: 'Precios por defecto' },
   };
 
   const today = new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -90,7 +94,7 @@ function App() {
           <div className="topbar-right">
             <span className="topbar-date">{today}</span>
             {view !== 'new-order' && (
-              <button className="btn-primary topbar-action" onClick={() => navigate('new-order')}>＋ Nueva Orden</button>
+              <button className="btn-primary topbar-action" onClick={() => navigate('new-order')}>+ Nueva Orden</button>
             )}
           </div>
         </div>
