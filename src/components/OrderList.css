@@ -293,3 +293,116 @@ tr.row-selected td {
 .page-size-label select:focus {
   border-color: var(--color-primary);
 }
+
+/* Order ID column */
+.order-id-cell {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Export button */
+.ss-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  background: var(--color-primary);
+  color: #000;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-export:hover:not(:disabled) {
+  box-shadow: 0 0 12px var(--color-primary-glow);
+}
+.btn-export:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Client picker modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-box {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  width: 380px;
+  max-width: 90vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.modal-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 0.35rem;
+}
+
+.modal-desc {
+  font-size: 0.82rem;
+  color: var(--color-text-dim);
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+
+.modal-client-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.modal-client-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.85rem;
+  background: var(--color-surface-2);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.modal-client-btn:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-dim);
+}
+
+.mcb-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.mcb-count {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.modal-cancel {
+  width: 100%;
+  text-align: center;
+  padding: 0.5rem;
+}

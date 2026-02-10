@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { fetchClients, fetchOrders, apiUpdateOrder, getCotizacionUrl } from '../data/api';
+import { fetchClients, fetchOrders, apiUpdateOrder, getCotizacionUrl, downloadExcelExport } from '../data/api';
 import { formatCLP, formatDate } from '../data/format';
 import type { Order, Client, ServiceType } from '../data/types';
 import { SERVICE_TYPES, unitLabel } from '../data/types';
@@ -25,6 +25,8 @@ export default function OrderList() {
   const [feedback, setFeedback] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [selectedOrders, setSelectedOrders] = useState<Map<string, Order>>(new Map());
+  const [showClientPicker, setShowClientPicker] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     fetchClients({ limit: 100 }).then((res) => setClients(res.clients)).catch(() => {});
@@ -122,6 +124,36 @@ export default function OrderList() {
     return { byService, grandTotal, count: sel.length };
   }, [selected, selectedOrders]);
 
+  const selectedClientIds = useMemo(() => {
+    const ids = new Set<string>();
+    selectedOrders.forEach((o) => ids.add(o.client_id));
+    return Array.from(ids);
+  }, [selected, selectedOrders]);
+
+  async function handleExportExcel(forClientId?: string) {
+    const sel = Array.from(selectedOrders.values());
+    const filtered = forClientId ? sel.filter((o) => o.client_id === forClientId) : sel;
+    if (filtered.length === 0) return;
+    const ids = filtered.map((o) => o.id);
+    setExporting(true);
+    setShowClientPicker(false);
+    try {
+      await downloadExcelExport(ids);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error exportando Excel');
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function onExportClick() {
+    if (selectedClientIds.length > 1) {
+      setShowClientPicker(true);
+    } else {
+      handleExportExcel();
+    }
+  }
+
   async function handleTogglePaid(order: Order) {
     try {
       await apiUpdateOrder(order.id, { is_paid: !order.is_paid });
@@ -187,6 +219,7 @@ export default function OrderList() {
                 onChange={toggleSelectAll}
               />
             </th>
+            <th>#</th>
             <th>Fecha</th>
             <th>Cliente</th>
             <th>Servicio</th>
@@ -201,6 +234,7 @@ export default function OrderList() {
         <tbody>
           {loading && Array.from({ length: 5 }).map((_, i) => (
             <tr key={`skel-${i}`} className="skeleton-row">
+              <td><span className="skeleton-cell tiny" /></td>
               <td><span className="skeleton-cell tiny" /></td>
               <td><span className="skeleton-cell medium" /></td>
               <td><span className="skeleton-cell wide" /></td>
@@ -221,6 +255,7 @@ export default function OrderList() {
                   onChange={() => toggleSelect(o.id)}
                 />
               </td>
+              <td className="order-id-cell">#{o.id}</td>
               <td>{formatDate(o.created_at)}</td>
               <td>{clientMap[o.client_id]?.name || '—'}</td>
               <td>{o.service}</td>
@@ -243,7 +278,7 @@ export default function OrderList() {
             </tr>
           ))}
           {!loading && orders.length === 0 && (
-            <tr><td colSpan={10} style={{ textAlign: 'center' }}>Sin órdenes</td></tr>
+            <tr><td colSpan={11} style={{ textAlign: 'center' }}>Sin órdenes</td></tr>
           )}
         </tbody>
       </table>
@@ -253,7 +288,12 @@ export default function OrderList() {
         <div className="selection-summary">
           <div className="ss-header">
             <span className="ss-count">{selectionSummary.count} orden{selectionSummary.count > 1 ? 'es' : ''} seleccionada{selectionSummary.count > 1 ? 's' : ''}</span>
-            <button className="btn-sm" onClick={() => { setSelected(new Set()); setSelectedOrders(new Map()); }}>Deseleccionar</button>
+            <div className="ss-actions">
+              <button className="btn-export" onClick={onExportClick} disabled={exporting}>
+                {exporting ? '⏳ Exportando...' : '📥 Exportar resumen'}
+              </button>
+              <button className="btn-sm" onClick={() => { setSelected(new Set()); setSelectedOrders(new Map()); }}>Deseleccionar</button>
+            </div>
           </div>
           <div className="ss-services">
             {Object.entries(selectionSummary.byService).map(([svc, data]) => (
@@ -267,6 +307,28 @@ export default function OrderList() {
           <div className="ss-grand-total">
             <span>Total selección</span>
             <span className="ss-grand-amount">{formatCLP(selectionSummary.grandTotal)}</span>
+          </div>
+        </div>
+      )}
+
+      {showClientPicker && (
+        <div className="modal-backdrop" onClick={() => setShowClientPicker(false)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">Seleccionar cliente</h3>
+            <p className="modal-desc">Las órdenes seleccionadas pertenecen a varios clientes. Elige uno para exportar.</p>
+            <div className="modal-client-list">
+              {selectedClientIds.map((cid) => {
+                const client = clientMap[cid];
+                const count = Array.from(selectedOrders.values()).filter((o) => o.client_id === cid).length;
+                return (
+                  <button key={cid} className="modal-client-btn" onClick={() => handleExportExcel(cid)}>
+                    <span className="mcb-name">{client?.name || `Cliente #${cid}`}</span>
+                    <span className="mcb-count">{count} orden{count > 1 ? 'es' : ''}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <button className="btn-sm modal-cancel" onClick={() => setShowClientPicker(false)}>Cancelar</button>
           </div>
         </div>
       )}

@@ -314,6 +314,26 @@ export function getCotizacionUrl(orderId: string): string {
   return `${API_BASE}/orders/${orderId}/cotizacion`;
 }
 
+export function getExcelExportUrl(orderIds: string[]): string {
+  return `${API_BASE}/orders/export?ids=${orderIds.join(',')}`;
+}
+
+export async function downloadExcelExport(orderIds: string[]): Promise<void> {
+  const url = `${API_BASE}/orders/export?ids=${orderIds.join(',')}`;
+  const res = await apiFetch<{ data: string; filename: string; type: string }>(url.replace(API_BASE, ''));
+  const byteChars = atob(res.data);
+  const byteArray = new Uint8Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) {
+    byteArray[i] = byteChars.charCodeAt(i);
+  }
+  const blob = new Blob([byteArray], { type: res.type });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = res.filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 // --- Cotización PDF (pre-order quote) ---
 
 export async function downloadCotizacion(data: {
