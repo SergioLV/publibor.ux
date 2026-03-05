@@ -50,6 +50,7 @@ export interface Order {
   is_paid: boolean;
   paid_at: string | null;
   created_at: string;
+  invoice_id: number | null;
 }
 
 // Helper: is this service priced per cloth (not per meter)?
@@ -60,4 +61,23 @@ export function isPerCloth(service: ServiceType): boolean {
 // Helper: unit label
 export function unitLabel(service: ServiceType): string {
   return isPerCloth(service) ? 'paño' : 'm';
+}
+
+// --- Invoice / DTE types (real API) ---
+
+export type InvoiceStatus = 'pending' | 'emitted' | 'failed';
+
+export interface Invoice {
+  id: number;
+  client_id: number;
+  folio: number | null;
+  tipo_dte: number;
+  fecha_emision: string | null;
+  monto_neto: number;
+  iva: number;
+  monto_total: number;
+  status: InvoiceStatus;
+  order_ids: number[];
+  created_at: string;
+  error_message?: string;
 }

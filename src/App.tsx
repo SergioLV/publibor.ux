@@ -5,8 +5,9 @@ import ClientList from './components/ClientList';
 import NewOrder from './components/NewOrder';
 import OrderList from './components/OrderList';
 import Prices from './components/Prices';
+import Facturacion from './components/Facturacion';
 
-type View = 'dashboard' | 'clients' | 'new-order' | 'orders' | 'prices';
+type View = 'dashboard' | 'clients' | 'new-order' | 'orders' | 'prices' | 'facturacion';
 
 /* ── SVG Icons (Lucide-style, 18×18) ── */
 const icons: Record<string, React.ReactNode> = {
@@ -15,6 +16,7 @@ const icons: Record<string, React.ReactNode> = {
   'new-order': <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>,
   orders: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>,
   prices: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+  facturacion: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v.5"/><path d="M12 6v.5"/></svg>,
   search: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
   bell: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>,
   sun: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>,
@@ -27,7 +29,7 @@ const icons: Record<string, React.ReactNode> = {
 function App() {
   const [view, setView] = useState<View>(() => {
     const saved = localStorage.getItem('publibor-view') as View | null;
-    return saved && ['dashboard', 'clients', 'new-order', 'orders', 'prices'].includes(saved) ? saved : 'dashboard';
+    return saved && ['dashboard', 'clients', 'new-order', 'orders', 'prices', 'facturacion'].includes(saved) ? saved : 'dashboard';
   });
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('publibor-theme') as 'dark' | 'light') || 'light';
@@ -66,6 +68,7 @@ function App() {
     { key: 'dashboard', label: 'Dashboard' },
     { key: 'orders', label: 'Órdenes' },
     { key: 'clients', label: 'Clientes' },
+    { key: 'facturacion', label: 'Facturación' },
   ];
 
   const configNav: { key: View; label: string }[] = [
@@ -78,6 +81,7 @@ function App() {
     'new-order': 'Nueva Orden',
     orders: 'Órdenes',
     prices: 'Precios',
+    facturacion: 'Facturación',
   };
 
   const viewDescriptions: Record<View, string> = {
@@ -86,6 +90,7 @@ function App() {
     'new-order': 'Crear orden de servicio',
     orders: 'Historial de órdenes',
     prices: 'Precios por defecto',
+    facturacion: 'Documentos tributarios electrónicos',
   };
 
   return (
@@ -228,6 +233,7 @@ function App() {
           {view === 'new-order' && <NewOrder onNavigate={(v) => navigate(v as View)} />}
           {view === 'orders' && <OrderList />}
           {view === 'prices' && <Prices />}
+          {view === 'facturacion' && <Facturacion />}
         </div>
       </main>
     </>
