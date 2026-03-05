@@ -1,4 +1,4 @@
-import type { Client, ClientPrice, Order, PriceTier, ServiceType } from './types';
+import type { Client, ClientPrice, Invoice, Order, PriceTier, ServiceType } from './types';
 
 const API_BASE = 'https://s8agiab37c.execute-api.us-east-1.amazonaws.com/prod/api';
 
@@ -217,6 +217,7 @@ interface ApiOrder {
   is_paid: boolean;
   paid_at: string | null;
   created_at: string;
+  invoice_id: number | null;
 }
 
 function mapApiOrder(api: ApiOrder): Order {
@@ -234,6 +235,7 @@ function mapApiOrder(api: ApiOrder): Order {
     is_paid: api.is_paid,
     paid_at: api.paid_at,
     created_at: api.created_at,
+    invoice_id: api.invoice_id,
   };
 }
 
@@ -410,4 +412,74 @@ export async function downloadCotizacion(data: {
   for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
   const blob = new Blob([arr], { type: 'application/pdf' });
   window.open(URL.createObjectURL(blob));
+}
+
+
+// --- Invoice API ---
+
+interface ApiInvoice {
+  id: number;
+  client_id: number;
+  folio: number | null;
+  tipo_dte: number;
+  fecha_emision: string | null;
+  monto_neto: number;
+  iva: number;
+  monto_total: number;
+  status: string;
+  order_ids: number[];
+  created_at: string;
+  error_message?: string;
+}
+
+function mapApiInvoice(api: ApiInvoice): Invoice {
+  return {
+    id: api.id,
+    client_id: api.client_id,
+    folio: api.folio,
+    tipo_dte: api.tipo_dte,
+    fecha_emision: api.fecha_emision,
+    monto_neto: api.monto_neto,
+    iva: api.iva,
+    monto_total: api.monto_total,
+    status: api.status as Invoice['status'],
+    order_ids: api.order_ids ?? [],
+    created_at: api.created_at,
+    error_message: api.error_message,
+  };
+}
+
+export async function apiPreviewInvoice(orderIds: number[]): Promise<string> {
+  const res = await apiFetch<{ data: string; type: string }>('/invoices/preview', {
+    method: 'POST',
+    body: JSON.stringify({ order_ids: orderIds }),
+  });
+  const byteChars = atob(res.data);
+  const byteArray = new Uint8Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) {
+    byteArray[i] = byteChars.charCodeAt(i);
+  }
+  const blob = new Blob([byteArray], { type: res.type || 'application/pdf' });
+  return URL.createObjectURL(blob);
+}
+
+export async function apiCreateInvoice(orderIds: number[]): Promise<Invoice> {
+  const res = await apiFetch<{ data: ApiInvoice }>('/invoices', {
+    method: 'POST',
+    body: JSON.stringify({ order_ids: orderIds }),
+  });
+  return mapApiInvoice(res.data);
+}
+
+export async function fetchInvoiceById(id: number): Promise<Invoice> {
+  const res = await apiFetch<{ data: ApiInvoice }>(`/invoices/${id}`);
+  return mapApiInvoice(res.data);
+}
+
+export async function fetchInvoices(params?: { client_id?: string }): Promise<Invoice[]> {
+  const qs = new URLSearchParams();
+  if (params?.client_id) qs.set('client_id', params.client_id);
+  const query = qs.toString();
+  const res = await apiFetch<{ data: ApiInvoice[] }>(`/invoices${query ? `?${query}` : ''}`);
+  return res.data.map(mapApiInvoice);
 }

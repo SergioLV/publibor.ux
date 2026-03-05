@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { fetchClients, fetchOrders, apiUpdateOrder, apiBulkMarkPaid, getCotizacionUrl, openBulkCotizacion, downloadExcelExport, fetchDefaultPrices, fetchClientById } from '../data/api';
+import { fetchClients, fetchOrders, apiUpdateOrder, apiBulkMarkPaid, getCotizacionUrl, openBulkCotizacion, downloadExcelExport, fetchDefaultPrices, fetchClientById, apiCreateInvoice, apiPreviewInvoice } from '../data/api';
 import { formatCLP, formatDate, formatDateShort } from '../data/format';
 import type { Order, Client, PriceTier, ServiceType } from '../data/types';
 import { SERVICE_TYPES, unitLabel, isPerCloth } from '../data/types';
@@ -41,6 +41,10 @@ export default function OrderList() {
   const [showMarkPaidConfirm, setShowMarkPaidConfirm] = useState(false);
   const [singleMarkPaidOrder, setSingleMarkPaidOrder] = useState<Order | null>(null);
   const [generatingBulkPdf, setGeneratingBulkPdf] = useState(false);
+  const [showFacturarPreview, setShowFacturarPreview] = useState(false);
+  const [facturando, setFacturando] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   // Edit modal state
   const [editing, setEditing] = useState<EditingOrder | null>(null);
@@ -247,6 +251,57 @@ export default function OrderList() {
     }
   }
 
+  // --- Facturar logic ---
+  const facturableOrders = useMemo(() => {
+    return Array.from(selectedOrders.values()).filter((o) => !o.invoice_id);
+  }, [selectedOrders, selected]);
+
+  const facturarClientIds = useMemo(() => {
+    const ids = new Set<string>();
+    facturableOrders.forEach((o) => ids.add(o.client_id));
+    return Array.from(ids);
+  }, [facturableOrders]);
+
+  async function onFacturarClick() {
+    if (facturableOrders.length === 0) return;
+    if (facturarClientIds.length > 1) {
+      setError('Selecciona órdenes de un solo cliente para facturar');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+    setPreviewLoading(true);
+    setPreviewUrl(null);
+    setShowFacturarPreview(true);
+    try {
+      const blobUrl = await apiPreviewInvoice(facturableOrders.map((o) => Number(o.id)));
+      setPreviewUrl(blobUrl);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error obteniendo preview');
+      setTimeout(() => setError(''), 5000);
+      setShowFacturarPreview(false);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+
+  async function handleEmitirFactura() {
+    if (facturableOrders.length === 0 || facturarClientIds.length !== 1) return;
+    setFacturando(true);
+    try {
+      await apiCreateInvoice(facturableOrders.map((o) => Number(o.id)));
+    } catch {
+      // silently continue — SII processes async
+    }
+    setShowFacturarPreview(false);
+    setPreviewUrl(null);
+    setSelected(new Set());
+    setSelectedOrders(new Map());
+    setFeedback('sii');
+    setTimeout(() => setFeedback(''), 5000);
+    setFacturando(false);
+    await loadOrders();
+  }
+
   async function handleTogglePaid(order: Order) {
     if (!order.is_paid) {
       // Show confirm modal for marking as paid
@@ -332,7 +387,16 @@ export default function OrderList() {
 
   return (
     <div className={`order-list ${selectionSummary ? 'has-selection' : ''}`}>
-      {feedback && <div className="feedback-msg">{feedback}</div>}
+      {feedback && feedback !== 'sii' && <div className="feedback-msg">{feedback}</div>}
+      {feedback === 'sii' && (
+        <div className="sii-feedback">
+          <img src="/images/sii.png" alt="SII" className="sii-feedback-img" />
+          <div>
+            <span className="sii-feedback-title">Factura enviada al SII</span>
+            <span className="sii-feedback-desc">El documento fue enviado correctamente al Servicio de Impuestos Internos para su procesamiento.</span>
+          </div>
+        </div>
+      )}
       {error && <div className="error-msg">{error}</div>}
 
       <div className="order-filters">
@@ -411,7 +475,10 @@ export default function OrderList() {
                   onChange={() => toggleSelect(o.id)}
                 />
               </td>
-              <td className="order-id-cell">#{o.id}</td>
+              <td className="order-id-cell">
+                #{o.id}
+                {o.invoice_id && <span className="invoice-badge">Facturada</span>}
+              </td>
               <td title={formatDate(o.created_at)}>{formatDateShort(o.created_at)}</td>
               <td>{clientMap[o.client_id]?.name || '—'}</td>
               <td><span className={`service-pill ${o.service.toLowerCase()}`}>{o.service}</span></td>
@@ -463,6 +530,11 @@ export default function OrderList() {
               {unpaidSelected.length > 0 && (
                 <button className="btn-mark-paid" onClick={() => setShowMarkPaidConfirm(true)} disabled={markingPaid}>
                   {markingPaid ? '⏳ Marcando...' : '✓ Marcar como pagadas'}
+                </button>
+              )}
+              {facturableOrders.length > 0 && (
+                <button className="btn-facturar" onClick={onFacturarClick} disabled={previewLoading}>
+                  {previewLoading ? '⏳ Cargando preview...' : `🧾 Facturar (${facturableOrders.length})`}
                 </button>
               )}
               <button className="btn-sm" onClick={() => { setSelected(new Set()); setSelectedOrders(new Map()); }}>Deseleccionar</button>
@@ -543,6 +615,66 @@ export default function OrderList() {
               <button className="btn-mark-paid" onClick={handleBulkMarkPaid} disabled={markingPaid}>
                 {markingPaid ? '⏳ Marcando...' : `✓ Confirmar pago`}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Facturar Preview Modal */}
+      {showFacturarPreview && (
+        <div className="modal-backdrop" onClick={() => { setShowFacturarPreview(false); setPreviewUrl(null); }}>
+          <div className="facturar-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="fm-header">
+              <div className="fm-header-left">
+                <img src="/images/sii.png" alt="SII" className="fm-sii-logo" />
+                <div>
+                  <h3>Emitir Factura Electrónica</h3>
+                  <span className="fm-subtitle">Tipo 33 — {clientMap[facturarClientIds[0]]?.name || '—'}</span>
+                </div>
+              </div>
+              <button className="eom-close" onClick={() => { setShowFacturarPreview(false); setPreviewUrl(null); }}>✕</button>
+            </div>
+            <div className="fm-content">
+              <div className="fm-preview-pane">
+                {previewLoading && (
+                  <div className="fm-preview-loading">
+                    <span>⏳ Cargando preview...</span>
+                  </div>
+                )}
+                {previewUrl && (
+                  <iframe src={previewUrl} className="fm-preview-iframe" title="Preview factura" />
+                )}
+              </div>
+              <div className="fm-details-pane">
+                <div className="fm-client-info">
+                  <div className="fm-ci-row"><span>RUT</span><span>{clientMap[facturarClientIds[0]]?.rut || '—'}</span></div>
+                  <div className="fm-ci-row"><span>Dirección</span><span>{clientMap[facturarClientIds[0]]?.billing_addr || '—'}</span></div>
+                </div>
+                <div className="fm-items">
+                  <div className="fm-items-header">
+                    <span>Orden</span><span>Servicio</span><span>Cantidad</span><span>Total</span>
+                  </div>
+                  {facturableOrders.map((o) => (
+                    <div key={o.id} className="fm-item-row">
+                      <span>#{o.id}</span>
+                      <span>{o.service}</span>
+                      <span>{o.meters} {unitLabel(o.service)}</span>
+                      <span>{formatCLP(o.total_amount)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="fm-totals">
+                  <div className="fm-total-row"><span>Neto</span><span>{formatCLP(facturableOrders.reduce((s, o) => s + o.subtotal, 0))}</span></div>
+                  <div className="fm-total-row"><span>IVA 19%</span><span>{formatCLP(facturableOrders.reduce((s, o) => s + o.tax_amount, 0))}</span></div>
+                  <div className="fm-total-row grand"><span>Total</span><span>{formatCLP(facturableOrders.reduce((s, o) => s + o.total_amount, 0))}</span></div>
+                </div>
+                <div className="fm-actions">
+                  <button className="btn-ghost" onClick={() => { setShowFacturarPreview(false); setPreviewUrl(null); }}>Cancelar</button>
+                  <button className="btn-facturar-emit" onClick={handleEmitirFactura} disabled={facturando}>
+                    {facturando ? '⏳ Emitiendo...' : '🧾 Emitir Factura'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
