@@ -195,15 +195,18 @@ export default function NewOrder({ onNavigate }: Props) {
           <span className="no-card-title">Seleccionar cliente</span>
         </div>
         <div className="dropdown-wrap">
-          <input
-            type="text"
-            placeholder="Buscar por nombre o RUT..."
-            value={clientSearch}
-            onChange={(e) => { setClientSearch(e.target.value); setShowDropdown(true); setClientId(''); }}
-            onFocus={() => setShowDropdown(true)}
-            onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-          />
-          {showDropdown && filteredClients.length > 0 && (
+          <div className="input-search-wrap">
+            <input
+              type="text"
+              placeholder="Buscar por nombre o RUT..."
+              value={clientSearch}
+              onChange={(e) => { setClientSearch(e.target.value); setShowDropdown(true); setClientId(''); }}
+              onFocus={() => setShowDropdown(true)}
+              onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+            />
+            {loadingClients && <span className="input-spinner" />}
+          </div>
+          {showDropdown && !loadingClients && filteredClients.length > 0 && (
             <ul className="dropdown-list">
               {filteredClients.map((c) => (
                 <li key={c.id} onClick={() => selectClient(c.id, c.name)}>
@@ -213,7 +216,16 @@ export default function NewOrder({ onNavigate }: Props) {
               ))}
             </ul>
           )}
-          {showDropdown && loadingClients && <div className="dropdown-loading">Buscando...</div>}
+          {showDropdown && loadingClients && (
+            <div className="dropdown-skeleton">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="dd-skeleton-row">
+                  <div className="dd-sk-name skeleton-block" />
+                  <div className="dd-sk-rut skeleton-block" />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         {selectedClient && (
           <div className="client-badge">

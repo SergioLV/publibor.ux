@@ -465,10 +465,65 @@
   .service-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
-.dropdown-loading {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
+/* Search input wrapper with spinner */
+.input-search-wrap {
+  position: relative;
+}
+.input-search-wrap input {
+  padding-right: 2.2rem;
+}
+.input-spinner {
+  position: absolute;
+  right: 0.65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: input-spin 0.6s linear infinite;
+}
+@keyframes input-spin {
+  to { transform: translateY(-50%) rotate(360deg); }
+}
+
+/* Skeleton dropdown */
+.dropdown-skeleton {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  z-index: 10;
+  padding: 0.35rem 0;
+}
+.dd-skeleton-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0.75rem;
+}
+.dd-sk-name {
+  width: 55%;
+  height: 0.8rem;
+}
+.dd-sk-rut {
+  width: 25%;
+  height: 0.7rem;
+}
+.skeleton-block {
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--color-surface-2) 25%, var(--color-border) 50%, var(--color-surface-2) 75%);
+  background-size: 200% 100%;
+  animation: dd-shimmer 1.5s ease-in-out infinite;
+}
+@keyframes dd-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 /* Description input */
