@@ -7,6 +7,17 @@ import { formatCLP, formatDate } from '../data/format';
 import type { Order } from '../data/types';
 import './NewOrder.css';
 
+const SERVICE_ICONS: Record<string, string> = {
+  DTF: '🖨️',
+  SUBLIMACION: '🎨',
+  UV: '💎',
+  TEXTURIZADO: '🧵',
+};
+
+function clientInitials(name: string) {
+  return name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('');
+}
+
 interface Props {
   onNavigate: (view: string) => void;
 }
@@ -28,6 +39,7 @@ export default function NewOrder({ onNavigate }: Props) {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [loadingClients, setLoadingClients] = useState(false);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [prevTotal, setPrevTotal] = useState<number | null>(null);
 
   useEffect(() => {
     fetchDefaultPrices().then(setTiers).catch(() => {});
@@ -61,14 +73,12 @@ export default function NewOrder({ onNavigate }: Props) {
     return SERVICE_TYPES.filter((s) => services.has(s));
   }, [tiers]);
 
-  // Auto-resolved price from tier + client override
   const autoPrice = useMemo(() => {
     if (!selectedClient || !service || !quantity || Number(quantity) < (isPerCloth(service as ServiceType) ? 1 : 0.1)) return null;
     const q = Number(quantity);
     return getEffectivePrice(selectedClient, tiers, service as ServiceType, q);
   }, [selectedClient, service, quantity, tiers]);
 
-  // Final price: user override or auto-resolved
   const finalPrice = priceOverride && Number(priceOverride) > 0 ? Number(priceOverride) : autoPrice?.price ?? null;
   const isManualOverride = priceOverride !== '' && Number(priceOverride) > 0 && autoPrice && Number(priceOverride) !== autoPrice.price;
 
@@ -77,6 +87,12 @@ export default function NewOrder({ onNavigate }: Props) {
     const q = Number(quantity);
     return { unitPrice: finalPrice, tier: autoPrice?.tier ?? null, isOverride: autoPrice?.isOverride ?? false, ...calculateOrder(finalPrice, q) };
   }, [finalPrice, quantity, autoPrice]);
+
+  useEffect(() => {
+    if (calc) setPrevTotal(calc.total_amount);
+  }, [calc]);
+
+  const totalChanged = calc && prevTotal !== null && calc.total_amount !== prevTotal;
 
   const priceError = useMemo(() => {
     if (!service || !quantity || Number(quantity) < 0.1) return '';
@@ -96,7 +112,6 @@ export default function NewOrder({ onNavigate }: Props) {
     if (!quantity || Number(quantity) < minQty) { setError(`Cantidad debe ser ≥ ${minQty}`); return; }
     if (priceError) { setError(priceError); return; }
     if (!calc) return;
-
     setSubmitting(true);
     try {
       await apiCreateOrder({
@@ -109,9 +124,7 @@ export default function NewOrder({ onNavigate }: Props) {
       setSuccess(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error creando orden');
-    } finally {
-      setSubmitting(false);
-    }
+    } finally { setSubmitting(false); }
   }
 
   async function handleCotizacion() {
@@ -128,9 +141,7 @@ export default function NewOrder({ onNavigate }: Props) {
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error generando cotización');
-    } finally {
-      setGeneratingPdf(false);
-    }
+    } finally { setGeneratingPdf(false); }
   }
 
   function selectClient(id: string, name: string) {
@@ -139,24 +150,28 @@ export default function NewOrder({ onNavigate }: Props) {
     setShowDropdown(false);
   }
 
-  function resetForm() {
-    setSuccess(false);
+  function clearClient() {
     setClientId('');
     setSelectedClient(null);
+    setClientSearch('');
     setService('');
     setQuantity('');
-    setDescription('');
     setPriceOverride('');
-    setClientSearch('');
-    setError('');
     setRecentOrders([]);
+  }
+
+  function resetForm() {
+    setSuccess(false);
+    clearClient();
+    setDescription('');
+    setError('');
   }
 
   const step = !clientId ? 1 : !service ? 2 : 3;
 
   if (success) {
     return (
-      <div className="no-flow">
+      <div className="no-layout">
         <div className="success-box">
           <div className="success-icon">✓</div>
           <h2>Orden creada</h2>
@@ -171,199 +186,289 @@ export default function NewOrder({ onNavigate }: Props) {
   }
 
   return (
-    <div className="no-flow">
-      {error && <div className="error-msg">{error}</div>}
+    <div className="no-layout">
+      {/* LEFT: Form */}
+      <div className="no-form">
+        {error && <div className="error-msg">{error}</div>}
 
-      <div className="steps">
-        <div className={`step ${step >= 1 ? 'active' : ''} ${clientId ? 'done' : ''}`}>
-          <span className="step-num">1</span><span className="step-label">Cliente</span>
+        {/* Steps progress bar */}
+        <div className="steps">
+          <div className="steps-track">
+            <div className="steps-fill" style={{ width: step === 1 ? '0%' : step === 2 ? '50%' : '100%' }} />
+          </div>
+          <div className={`step ${step >= 1 ? 'active' : ''} ${clientId ? 'done' : ''}`}>
+            <span className="step-num">{clientId ? '✓' : '1'}</span>
+            <span className="step-label">Cliente</span>
+          </div>
+          <div className={`step ${step >= 2 ? 'active' : ''} ${service ? 'done' : ''}`}>
+            <span className="step-num">{service ? '✓' : '2'}</span>
+            <span className="step-label">Servicio</span>
+          </div>
+          <div className={`step ${step >= 3 ? 'active' : ''} ${quantity && Number(quantity) >= 0.1 ? 'done' : ''}`}>
+            <span className="step-num">{quantity && Number(quantity) >= 0.1 ? '✓' : '3'}</span>
+            <span className="step-label">Cantidad</span>
+          </div>
         </div>
-        <div className="step-line" />
-        <div className={`step ${step >= 2 ? 'active' : ''} ${service ? 'done' : ''}`}>
-          <span className="step-num">2</span><span className="step-label">Servicio</span>
-        </div>
-        <div className="step-line" />
-        <div className={`step ${step >= 3 ? 'active' : ''} ${quantity && Number(quantity) >= 0.1 ? 'done' : ''}`}>
-          <span className="step-num">3</span><span className="step-label">Cantidad</span>
-        </div>
+
+        {/* Step 1: Client */}
+        {step === 1 ? (
+          <div className="no-card card-active card-enter">
+            <div className="no-card-head">
+              <span className="no-card-num">1</span>
+              <span className="no-card-title title-active">Seleccionar cliente</span>
+            </div>
+            <div className="dropdown-wrap">
+              <div className="input-search-wrap">
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre o RUT..."
+                  value={clientSearch}
+                  onChange={(e) => { setClientSearch(e.target.value); setShowDropdown(true); setClientId(''); }}
+                  onFocus={() => setShowDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                />
+                {loadingClients && <span className="input-spinner" />}
+              </div>
+              {showDropdown && !loadingClients && filteredClients.length > 0 && (
+                <ul className="dropdown-list">
+                  {filteredClients.map((c) => (
+                    <li key={c.id} onClick={() => selectClient(c.id, c.name)}>
+                      <span className="dd-name">{c.name}</span>
+                      {c.rut && <span className="dd-rut">{c.rut}</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {showDropdown && loadingClients && (
+                <div className="dropdown-skeleton">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="dd-skeleton-row">
+                      <div className="dd-sk-name skeleton-block" />
+                      <div className="dd-sk-rut skeleton-block" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="no-card card-collapsed" onClick={clearClient}>
+            <div className="collapsed-row">
+              <span className="no-card-num">✓</span>
+              <span className="collapsed-label">Cliente</span>
+              <div className="collapsed-value">
+                {selectedClient && <span className="cb-avatar cb-avatar-sm">{clientInitials(selectedClient.name)}</span>}
+                <span>{selectedClient?.name}</span>
+              </div>
+              <button className="collapsed-change" onClick={(e) => { e.stopPropagation(); clearClient(); }}>Cambiar</button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Service */}
+        {step === 2 ? (
+          <div className="no-card card-active card-enter">
+            <div className="no-card-head">
+              <span className="no-card-num">2</span>
+              <span className="no-card-title title-active">Tipo de servicio</span>
+            </div>
+            <div className="service-grid">
+              {availableServices.map((s) => (
+                <button
+                  key={s}
+                  className={`service-option ${service === s ? 'selected' : ''}`}
+                  onClick={() => { setService(s); setQuantity(''); setPriceOverride(''); }}
+                >
+                  <span className="so-icon">{SERVICE_ICONS[s] ?? '📋'}</span>
+                  <span className="so-name">{s}</span>
+                  <span className="so-unit">por {unitLabel(s)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : service ? (
+          <div className="no-card card-collapsed" onClick={() => { setService(''); setQuantity(''); setPriceOverride(''); }}>
+            <div className="collapsed-row">
+              <span className="no-card-num">✓</span>
+              <span className="collapsed-label">Servicio</span>
+              <span className="collapsed-value">
+                <span className="collapsed-service-icon">{SERVICE_ICONS[service] ?? '📋'}</span>
+                {service}
+              </span>
+              <button className="collapsed-change" onClick={(e) => { e.stopPropagation(); setService(''); setQuantity(''); setPriceOverride(''); }}>Cambiar</button>
+            </div>
+          </div>
+        ) : (
+          <div className="no-card card-pending">
+            <div className="collapsed-row">
+              <span className="no-card-num">2</span>
+              <span className="collapsed-label dim">Tipo de servicio</span>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Quantity + Description */}
+        {step >= 3 ? (
+          <div className="no-card card-active card-enter">
+            <div className="no-card-head">
+              <span className="no-card-num">3</span>
+              <span className="no-card-title title-active">
+                {service && isPerCloth(service as ServiceType) ? 'Cantidad de paños' : 'Cantidad en metros'}
+              </span>
+            </div>
+            <div className="qty-input-wrap">
+              <input
+                className="meters-input"
+                type="number"
+                min={service && isPerCloth(service as ServiceType) ? '1' : '0.1'}
+                step={service && isPerCloth(service as ServiceType) ? '1' : '0.1'}
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                placeholder="0"
+              />
+              <span className="qty-unit">{service ? unitLabel(service as ServiceType) : 'mts'}</span>
+            </div>
+            {priceError && <div className="error-msg" style={{ marginTop: '0.5rem' }}>{priceError}</div>}
+            {autoPrice && (
+              <div className="tier-info">
+                Rango: {autoPrice.tier.min_meters}{autoPrice.tier.max_meters ? `–${autoPrice.tier.max_meters}` : '+'} {unitLabel(service as ServiceType)}
+                {' · '}Precio sugerido: {formatCLP(autoPrice.price)}/{unitLabel(service as ServiceType)}
+                {autoPrice.isOverride && <span className="override-badge">Precio especial</span>}
+              </div>
+            )}
+            {autoPrice && (
+              <div className="price-override-row" style={{ marginTop: '0.5rem' }}>
+                <label className="price-override-label">
+                  Precio unitario (CLP/{unitLabel(service as ServiceType)})
+                  <div className="price-override-input-wrap">
+                    <span className="price-prefix">$</span>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={priceOverride}
+                      onChange={(e) => setPriceOverride(e.target.value)}
+                      placeholder={String(autoPrice.price)}
+                    />
+                  </div>
+                </label>
+                {isManualOverride && (
+                  <button className="btn-sm" onClick={() => setPriceOverride('')} style={{ marginTop: '0.25rem' }}>
+                    Usar precio sugerido
+                  </button>
+                )}
+              </div>
+            )}
+            <input
+              className="description-input"
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Descripción (opcional)"
+              style={{ marginTop: '0.75rem' }}
+            />
+          </div>
+        ) : (
+          <div className="no-card card-pending">
+            <div className="collapsed-row">
+              <span className="no-card-num">3</span>
+              <span className="collapsed-label dim">Cantidad</span>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Step 1: Client */}
-      <div className="no-card">
-        <div className="no-card-head">
-          <span className="no-card-num">1</span>
-          <span className="no-card-title">Seleccionar cliente</span>
-        </div>
-        <div className="dropdown-wrap">
-          <div className="input-search-wrap">
-            <input
-              type="text"
-              placeholder="Buscar por nombre o RUT..."
-              value={clientSearch}
-              onChange={(e) => { setClientSearch(e.target.value); setShowDropdown(true); setClientId(''); }}
-              onFocus={() => setShowDropdown(true)}
-              onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-            />
-            {loadingClients && <span className="input-spinner" />}
+      {/* RIGHT: Sticky summary panel */}
+      <aside className="no-sidebar">
+        <div className={`side-summary ${calc ? 'side-ready' : ''}`}>
+          <div className="side-summary-head">Resumen de orden</div>
+
+          <div className="side-rows">
+            <div className="side-row">
+              <span className="side-row-label">Cliente</span>
+              <span className="side-row-value">{selectedClient?.name ?? '—'}</span>
+            </div>
+            <div className="side-row">
+              <span className="side-row-label">Servicio</span>
+              <span className="side-row-value">{service || '—'}</span>
+            </div>
+            <div className="side-row">
+              <span className="side-row-label">Cantidad</span>
+              <span className="side-row-value">{quantity ? `${quantity} ${service ? unitLabel(service as ServiceType) : 'mts'}` : '—'}</span>
+            </div>
+            {description && (
+              <div className="side-row">
+                <span className="side-row-label">Descripción</span>
+                <span className="side-row-value side-row-desc">{description}</span>
+              </div>
+            )}
           </div>
-          {showDropdown && !loadingClients && filteredClients.length > 0 && (
-            <ul className="dropdown-list">
-              {filteredClients.map((c) => (
-                <li key={c.id} onClick={() => selectClient(c.id, c.name)}>
-                  <span className="dd-name">{c.name}</span>
-                  {c.rut && <span className="dd-rut">{c.rut}</span>}
-                </li>
-              ))}
-            </ul>
-          )}
-          {showDropdown && loadingClients && (
-            <div className="dropdown-skeleton">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="dd-skeleton-row">
-                  <div className="dd-sk-name skeleton-block" />
-                  <div className="dd-sk-rut skeleton-block" />
+
+          <div className="side-divider" />
+
+          <div className="side-rows">
+            <div className="side-row">
+              <span className="side-row-label">Precio{isManualOverride ? ' (manual)' : ''}</span>
+              <span className="side-row-value">{calc ? formatCLP(calc.unitPrice) + '/' + unitLabel(service as ServiceType) : '—'}</span>
+            </div>
+            <div className="side-row">
+              <span className="side-row-label">Subtotal</span>
+              <span className="side-row-value">{calc ? formatCLP(calc.subtotal) : '—'}</span>
+            </div>
+            <div className="side-row">
+              <span className="side-row-label">IVA 19%</span>
+              <span className="side-row-value">{calc ? formatCLP(calc.tax_amount) : '—'}</span>
+            </div>
+          </div>
+
+          <div className="side-divider" />
+
+          <div className="side-total-row">
+            <span className="side-total-label">Total</span>
+            <span className={`side-total-amount ${totalChanged ? 'pulse' : ''}`} key={calc?.total_amount}>
+              {calc ? formatCLP(calc.total_amount) : '$0'}
+            </span>
+          </div>
+
+          <div className="side-actions">
+            <button className="btn-submit side-btn" onClick={handleSubmit} disabled={!calc || !!priceError || submitting}>
+              {submitting ? 'Creando...' : 'Crear Orden'}
+            </button>
+            <button className="btn-cotizacion side-btn" onClick={handleCotizacion} disabled={!calc || !!priceError || generatingPdf}>
+              {generatingPdf ? 'Generando...' : 'Cotización PDF'}
+            </button>
+          </div>
+        </div>
+
+        {/* Recent orders in sidebar */}
+        {selectedClient && recentOrders.length > 0 && (
+          <div className="side-recent">
+            <div className="side-recent-head">Últimas órdenes</div>
+            <div className="recent-rows">
+              {recentOrders.map((o) => (
+                <div key={o.id} className="recent-row">
+                  <span>{formatDate(o.created_at)}</span>
+                  <span className="recent-service">{o.service}</span>
+                  <span>{o.meters}{unitLabel(o.service)}</span>
+                  <span className="recent-total">{formatCLP(o.total_amount)}</span>
                 </div>
               ))}
             </div>
-          )}
-        </div>
-        {selectedClient && (
-          <div className="client-badge">
-            <div className="cb-info">
-              <strong>{selectedClient.name}</strong>
-              {selectedClient.rut && <span>{selectedClient.rut}</span>}
-            </div>
-            {selectedClient.prices.length > 0 && (
-              <div className="cb-overrides">
-                <span className="cb-overrides-label">{selectedClient.prices.length} precio{selectedClient.prices.length > 1 ? 's' : ''} especial{selectedClient.prices.length > 1 ? 'es' : ''}</span>
-              </div>
-            )}
           </div>
         )}
-      </div>
+      </aside>
 
-      {/* Step 2: Service */}
-      <div className="no-card">
-        <div className="no-card-head">
-          <span className="no-card-num">2</span>
-          <span className="no-card-title">Tipo de servicio</span>
-        </div>
-        <div className="service-grid">
-          {availableServices.map((s) => (
-            <button
-              key={s}
-              className={`service-option ${service === s ? 'selected' : ''}`}
-              onClick={() => { setService(s); setQuantity(''); setPriceOverride(''); }}
-            >
-              <span className="so-name">{s}</span>
-              <span className="so-unit">por {unitLabel(s)}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Step 3: Quantity + Description */}
-      <div className="no-card">
-        <div className="no-card-head">
-          <span className="no-card-num">3</span>
-          <span className="no-card-title">
-            {service && isPerCloth(service as ServiceType) ? 'Cantidad de paños' : 'Cantidad en metros'}
-          </span>
-        </div>
-        <input
-          className="meters-input"
-          type="number"
-          min={service && isPerCloth(service as ServiceType) ? '1' : '0.1'}
-          step={service && isPerCloth(service as ServiceType) ? '1' : '0.1'}
-          value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
-          placeholder="0"
-        />
-        {priceError && <div className="error-msg" style={{ marginTop: '0.5rem' }}>{priceError}</div>}
-        {autoPrice && (
-          <div className="tier-info">
-            Rango: {autoPrice.tier.min_meters}{autoPrice.tier.max_meters ? `–${autoPrice.tier.max_meters}` : '+'} {unitLabel(service as ServiceType)}
-            {' · '}Precio sugerido: {formatCLP(autoPrice.price)}/{unitLabel(service as ServiceType)}
-            {autoPrice.isOverride && <span className="override-badge">Precio especial</span>}
-          </div>
-        )}
-        {autoPrice && (
-          <div className="price-override-row" style={{ marginTop: '0.5rem' }}>
-            <label className="price-override-label">
-              Precio unitario (CLP/{unitLabel(service as ServiceType)})
-              <div className="price-override-input-wrap">
-                <span className="price-prefix">$</span>
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={priceOverride}
-                  onChange={(e) => setPriceOverride(e.target.value)}
-                  placeholder={String(autoPrice.price)}
-                />
-              </div>
-            </label>
-            {isManualOverride && (
-              <button className="btn-sm" onClick={() => setPriceOverride('')} style={{ marginTop: '0.25rem' }}>
-                Usar precio sugerido
-              </button>
-            )}
-          </div>
-        )}
-        <input
-          className="description-input"
-          type="text"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Descripción (opcional)"
-          style={{ marginTop: '0.75rem' }}
-        />
-      </div>
-
-      {/* Recent orders */}
-      {selectedClient && recentOrders.length > 0 && (
-        <div className="no-card recent">
-          <div className="no-card-head">
-            <span className="no-card-title">Últimas órdenes de {selectedClient.name}</span>
-          </div>
-          <div className="recent-rows">
-            {recentOrders.map((o) => (
-              <div key={o.id} className="recent-row">
-                <span>{formatDate(o.created_at)}</span>
-                <span className="recent-service">{o.service}</span>
-                <span>{o.meters}{unitLabel(o.service)}</span>
-                <span className="recent-total">{formatCLP(o.total_amount)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Summary bar */}
-      <div className={`summary-bar ${calc ? 'ready' : ''}`}>
-        <div className="summary-details">
-          <div className="sd-item">
-            <span className="sd-label">Precio{isManualOverride ? ' (manual)' : ''}</span>
-            <span className="sd-value">{calc ? formatCLP(calc.unitPrice) + '/' + unitLabel(service as ServiceType) : '—'}</span>
-          </div>
-          <div className="sd-item">
-            <span className="sd-label">Subtotal</span>
-            <span className="sd-value">{calc ? formatCLP(calc.subtotal) : '—'}</span>
-          </div>
-          <div className="sd-item">
-            <span className="sd-label">IVA 19%</span>
-            <span className="sd-value">{calc ? formatCLP(calc.tax_amount) : '—'}</span>
-          </div>
-        </div>
-        <div className="summary-total">
-          <span className="st-amount">{calc ? formatCLP(calc.total_amount) : '$0'}</span>
-          <button className="btn-cotizacion" onClick={handleCotizacion} disabled={!calc || !!priceError || generatingPdf}>
-            {generatingPdf ? 'Generando...' : 'Cotización PDF'}
-          </button>
-          <button className="btn-submit" onClick={handleSubmit} disabled={!calc || !!priceError || submitting}>
-            {submitting ? 'Creando...' : 'Crear Orden'}
-          </button>
-        </div>
+      {/* Mobile-only bottom bar */}
+      <div className={`summary-bar-mobile ${calc ? 'ready' : ''}`}>
+        <span className={`st-amount ${totalChanged ? 'pulse' : ''}`} key={calc ? `m${calc.total_amount}` : 'mz'}>
+          {calc ? formatCLP(calc.total_amount) : '$0'}
+        </span>
+        <button className="btn-cotizacion" onClick={handleCotizacion} disabled={!calc || !!priceError || generatingPdf}>
+          {generatingPdf ? '...' : 'PDF'}
+        </button>
+        <button className="btn-submit" onClick={handleSubmit} disabled={!calc || !!priceError || submitting}>
+          {submitting ? '...' : 'Crear'}
+        </button>
       </div>
     </div>
   );
