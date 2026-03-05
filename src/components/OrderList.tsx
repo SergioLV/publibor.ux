@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { fetchClients, fetchOrders, apiUpdateOrder, apiBulkMarkPaid, getCotizacionUrl, downloadExcelExport, fetchDefaultPrices, fetchClientById } from '../data/api';
+import { fetchClients, fetchOrders, apiUpdateOrder, apiBulkMarkPaid, getCotizacionUrl, openBulkCotizacion, downloadExcelExport, fetchDefaultPrices, fetchClientById } from '../data/api';
 import { formatCLP, formatDate } from '../data/format';
 import type { Order, Client, PriceTier, ServiceType } from '../data/types';
 import { SERVICE_TYPES, unitLabel, isPerCloth } from '../data/types';
@@ -31,13 +31,16 @@ export default function OrderList() {
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(10);
   const [feedback, setFeedback] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [selectedOrders, setSelectedOrders] = useState<Map<string, Order>>(new Map());
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [markingPaid, setMarkingPaid] = useState(false);
+  const [showMarkPaidConfirm, setShowMarkPaidConfirm] = useState(false);
+  const [singleMarkPaidOrder, setSingleMarkPaidOrder] = useState<Order | null>(null);
+  const [generatingBulkPdf, setGeneratingBulkPdf] = useState(false);
 
   // Edit modal state
   const [editing, setEditing] = useState<EditingOrder | null>(null);
@@ -245,9 +248,16 @@ export default function OrderList() {
   }
 
   async function handleTogglePaid(order: Order) {
+    if (!order.is_paid) {
+      // Show confirm modal for marking as paid
+      setSingleMarkPaidOrder(order);
+      setShowMarkPaidConfirm(true);
+      return;
+    }
+    // Unmark paid — no confirmation needed
     try {
-      await apiUpdateOrder(order.id, { is_paid: !order.is_paid });
-      setFeedback(`Orden #${order.id} ${!order.is_paid ? 'marcada como pagada' : 'marcada como no pagada'}`);
+      await apiUpdateOrder(order.id, { is_paid: false });
+      setFeedback(`Orden #${order.id} marcada como no pagada`);
       setTimeout(() => setFeedback(''), 3000);
       await loadOrders();
     } catch (e) {
@@ -255,18 +265,54 @@ export default function OrderList() {
     }
   }
 
+  async function handleBulkCotizacion() {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    setGeneratingBulkPdf(true);
+    try {
+      await openBulkCotizacion(ids);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error generando cotización');
+    } finally {
+      setGeneratingBulkPdf(false);
+    }
+  }
+
+  const unpaidSelected = useMemo(() => {
+    return Array.from(selectedOrders.values()).filter((o) => !o.is_paid);
+  }, [selectedOrders]);
+
+  const markPaidOrders = useMemo(() => {
+    if (singleMarkPaidOrder) return [singleMarkPaidOrder];
+    return unpaidSelected;
+  }, [singleMarkPaidOrder, unpaidSelected]);
+
+  const markPaidSummary = useMemo(() => {
+    if (markPaidOrders.length === 0) return null;
+    const byClient: Record<string, { name: string; orders: Order[] }> = {};
+    let grandTotal = 0;
+    for (const o of markPaidOrders) {
+      if (!byClient[o.client_id]) {
+        byClient[o.client_id] = { name: clientMap[o.client_id]?.name || `#${o.client_id}`, orders: [] };
+      }
+      byClient[o.client_id].orders.push(o);
+      grandTotal += o.total_amount;
+    }
+    return { byClient, grandTotal, count: markPaidOrders.length };
+  }, [markPaidOrders, clientMap]);
+
   async function handleBulkMarkPaid() {
-    const unpaidIds = Array.from(selectedOrders.values())
-      .filter((o) => !o.is_paid)
-      .map((o) => o.id);
-    if (unpaidIds.length === 0) return;
+    const ids = markPaidOrders.map((o) => o.id);
+    if (ids.length === 0) return;
     setMarkingPaid(true);
     try {
-      const updated = await apiBulkMarkPaid(unpaidIds);
+      const updated = await apiBulkMarkPaid(ids);
       setFeedback(`${updated} orden${updated > 1 ? 'es' : ''} marcada${updated > 1 ? 's' : ''} como pagada${updated > 1 ? 's' : ''}`);
       setTimeout(() => setFeedback(''), 3000);
       setSelected(new Set());
       setSelectedOrders(new Map());
+      setSingleMarkPaidOrder(null);
+      setShowMarkPaidConfirm(false);
       await loadOrders();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error marcando órdenes como pagadas');
@@ -407,8 +453,13 @@ export default function OrderList() {
               <button className="btn-export" onClick={onExportClick} disabled={exporting}>
                 {exporting ? '⏳ Exportando...' : '📥 Exportar resumen'}
               </button>
-              {Array.from(selectedOrders.values()).some((o) => !o.is_paid) && (
-                <button className="btn-mark-paid" onClick={handleBulkMarkPaid} disabled={markingPaid}>
+              {selectedClientIds.length === 1 && (
+                <button className="btn-cotizacion-bulk" onClick={handleBulkCotizacion} disabled={generatingBulkPdf}>
+                  {generatingBulkPdf ? '⏳ Generando...' : '📄 Cotización PDF'}
+                </button>
+              )}
+              {unpaidSelected.length > 0 && (
+                <button className="btn-mark-paid" onClick={() => setShowMarkPaidConfirm(true)} disabled={markingPaid}>
                   {markingPaid ? '⏳ Marcando...' : '✓ Marcar como pagadas'}
                 </button>
               )}
@@ -449,6 +500,48 @@ export default function OrderList() {
               })}
             </div>
             <button className="btn-sm modal-cancel" onClick={() => setShowClientPicker(false)}>Cancelar</button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Mark Paid Modal */}
+      {showMarkPaidConfirm && markPaidSummary && (
+        <div className="modal-backdrop" onClick={() => { setShowMarkPaidConfirm(false); setSingleMarkPaidOrder(null); }}>
+          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="cm-header">
+              <h3>Confirmar pago</h3>
+              <button className="eom-close" onClick={() => { setShowMarkPaidConfirm(false); setSingleMarkPaidOrder(null); }}>✕</button>
+            </div>
+            <div className="cm-body">
+              <p className="cm-desc">
+                Vas a marcar <strong>{markPaidSummary.count} orden{markPaidSummary.count > 1 ? 'es' : ''}</strong> como pagada{markPaidSummary.count > 1 ? 's' : ''}:
+              </p>
+              <div className="cm-clients">
+                {Object.entries(markPaidSummary.byClient).map(([cid, data]) => (
+                  <div key={cid} className="cm-client-group">
+                    <div className="cm-client-name">{data.name}</div>
+                    {data.orders.map((o) => (
+                      <div key={o.id} className="cm-order-row">
+                        <span className="cm-order-id">#{o.id}</span>
+                        <span className="cm-order-service">{o.service}</span>
+                        <span className="cm-order-meters">{o.meters} {unitLabel(o.service as ServiceType)}</span>
+                        <span className="cm-order-total">{formatCLP(o.total_amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <div className="cm-grand-total">
+                <span>Total</span>
+                <span>{formatCLP(markPaidSummary.grandTotal)}</span>
+              </div>
+            </div>
+            <div className="cm-actions">
+              <button className="btn-ghost" onClick={() => { setShowMarkPaidConfirm(false); setSingleMarkPaidOrder(null); }}>Cancelar</button>
+              <button className="btn-mark-paid" onClick={handleBulkMarkPaid} disabled={markingPaid}>
+                {markingPaid ? '⏳ Marcando...' : `✓ Confirmar pago`}
+              </button>
+            </div>
           </div>
         </div>
       )}

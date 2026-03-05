@@ -328,6 +328,30 @@ export async function apiBulkMarkPaid(ids: string[]): Promise<number> {
   return res.updated;
 }
 
+// --- Bulk Cotización PDF ---
+
+export async function openBulkCotizacion(orderIds: string[]): Promise<void> {
+  const res = await fetch(`${API_BASE}/orders/cotizacion`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ order_ids: orderIds.map(Number) }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`API ${res.status}: ${text || res.statusText}`);
+  }
+  const html = await res.text();
+  const win = window.open('', '_blank');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+  }
+}
+
+export function getBulkCotizacionUrl(orderIds: string[]): string {
+  return `${API_BASE}/orders/cotizacion?order_ids=${orderIds.join(',')}`;
+}
+
 // --- Cotización PDF ---
 
 export function getCotizacionUrl(orderId: string): string {

@@ -710,3 +710,138 @@ tr.row-selected td {
   opacity: 0.5;
   cursor: default;
 }
+
+/* Bulk cotización button */
+.btn-cotizacion-bulk {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+.btn-cotizacion-bulk:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  box-shadow: 0 0 8px var(--color-primary-glow);
+}
+
+/* Confirm mark paid modal */
+.confirm-modal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  width: 460px;
+  max-width: 92vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35);
+}
+
+.cm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cm-header h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.cm-body {
+  padding: 1.25rem 1.5rem;
+}
+
+.cm-desc {
+  font-size: 0.85rem;
+  color: var(--color-text-dim);
+  margin: 0 0 1rem;
+  line-height: 1.5;
+}
+
+.cm-clients {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.cm-client-group {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.75rem;
+}
+
+.cm-client-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-text);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 0.5rem;
+}
+
+.cm-order-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.3rem 0;
+  font-size: 0.8rem;
+  color: var(--color-text-dim);
+}
+
+.cm-order-id {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 45px;
+}
+
+.cm-order-service {
+  font-weight: 600;
+  color: var(--color-text);
+  min-width: 90px;
+}
+
+.cm-order-meters {
+  font-variant-numeric: tabular-nums;
+}
+
+.cm-order-total {
+  margin-left: auto;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.cm-grand-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.cm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--color-border);
+}
