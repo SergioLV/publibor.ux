@@ -5,11 +5,32 @@ import { fetchDefaultPrices, updateDefaultPriceTier } from '../data/api';
 import { formatCLP } from '../data/format';
 import './Prices.css';
 
-const SERVICE_META: Record<ServiceType, { icon: string; desc: string }> = {
-  DTF: { icon: '🎨', desc: 'Impresión directa a film' },
-  SUBLIMACION: { icon: '🔥', desc: 'Sublimación por calor' },
-  UV: { icon: '💡', desc: 'Impresión UV directa' },
-  TEXTURIZADO: { icon: '🧵', desc: 'Texturizado por paño' },
+/* ── Service metadata with SVG icons and accent colors ── */
+const SERVICE_META: Record<ServiceType, { icon: string; desc: string; accent: string; accentDim: string }> = {
+  DTF: {
+    icon: '🖨️',
+    desc: 'Impresión directa a film',
+    accent: '#818cf8',
+    accentDim: 'rgba(99, 102, 241, 0.1)',
+  },
+  SUBLIMACION: {
+    icon: '🎨',
+    desc: 'Sublimación por calor',
+    accent: '#f472b6',
+    accentDim: 'rgba(244, 114, 182, 0.1)',
+  },
+  UV: {
+    icon: '💎',
+    desc: 'Impresión UV directa',
+    accent: '#38bdf8',
+    accentDim: 'rgba(56, 189, 248, 0.1)',
+  },
+  TEXTURIZADO: {
+    icon: '🧵',
+    desc: 'Texturizado por paño',
+    accent: '#fbbf24',
+    accentDim: 'rgba(251, 191, 36, 0.1)',
+  },
 };
 
 function tierRangeLabel(tier: PriceTier): string {
@@ -86,10 +107,20 @@ export default function Prices() {
         <div className="prices-grid">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="price-card skeleton-card">
-              <div className="pc-header"><span className="skeleton-block sk-title" /></div>
+              <div className="pc-header">
+                <div className="skeleton-block sk-icon" />
+                <div className="sk-header-lines">
+                  <span className="skeleton-block sk-title" />
+                  <span className="skeleton-block sk-desc" />
+                </div>
+              </div>
               <div className="pc-body">
-                <div className="skeleton-block sk-row" />
-                <div className="skeleton-block sk-row" />
+                {[1, 2, 3].map((j) => (
+                  <div key={j} className="sk-tier-row">
+                    <span className="skeleton-block sk-range" />
+                    <span className="skeleton-block sk-price" />
+                  </div>
+                ))}
               </div>
             </div>
           ))}
@@ -104,7 +135,12 @@ export default function Prices() {
         Precios base por servicio. Se aplican cuando el cliente no tiene precio preferencial.
       </p>
 
-      {feedback && <div className="prices-feedback">{feedback}</div>}
+      {feedback && (
+        <div className={`prices-feedback${feedback.startsWith('Error') ? ' error' : ''}`}>
+          <span className="feedback-icon">{feedback.startsWith('Error') ? '✕' : '✓'}</span>
+          {feedback}
+        </div>
+      )}
 
       <div className="prices-grid">
         {SERVICE_TYPES.map((service) => {
@@ -115,9 +151,13 @@ export default function Prices() {
           const perCloth = isPerCloth(service);
 
           return (
-            <div key={service} className="price-card">
+            <div
+              key={service}
+              className="price-card"
+              style={{ '--card-accent': meta.accent, '--card-accent-dim': meta.accentDim } as React.CSSProperties}
+            >
               <div className="pc-header">
-                <span className="pc-icon">{meta.icon}</span>
+                <span className="pc-icon-wrap">{meta.icon}</span>
                 <div className="pc-header-text">
                   <span className="pc-service-name">{service}</span>
                   <span className="pc-service-desc">{meta.desc}</span>
@@ -132,14 +172,20 @@ export default function Prices() {
                     <span>Precio</span>
                   </div>
                 )}
-                {serviceTiers.map((tier) => (
-                  <div key={tier.id} className={`pc-tier ${editingId === tier.id ? 'editing' : ''}`}>
-                    <span className="pc-tier-range">
-                      {perCloth || (tier.min_meters === 0 && tier.max_meters === null)
-                        ? 'Precio único'
-                        : <>{tierRangeLabel(tier)} <span className="pc-tier-unit">{unit}</span></>
-                      }
-                    </span>
+                {serviceTiers.map((tier, idx) => (
+                  <div
+                    key={tier.id}
+                    className={`pc-tier${editingId === tier.id ? ' editing' : ''}${idx % 2 === 1 ? ' striped' : ''}`}
+                  >
+                    <div className="pc-tier-left">
+                      <span className="pc-tier-dot" />
+                      <span className="pc-tier-range">
+                        {perCloth || (tier.min_meters === 0 && tier.max_meters === null)
+                          ? 'Precio único'
+                          : <>{tierRangeLabel(tier)} <span className="pc-tier-unit">{unit}</span></>
+                        }
+                      </span>
+                    </div>
 
                     {editingId === tier.id ? (
                       <div className="pc-tier-edit">
@@ -160,16 +206,19 @@ export default function Prices() {
                           />
                         </div>
                         <div className="pc-edit-actions">
-                          <button className="pc-btn save" onClick={() => saveEdit(tier)} disabled={saving}>
-                            {saving ? '...' : '✓'}
+                          <button className="pc-btn save" onClick={() => saveEdit(tier)} disabled={saving} title="Guardar">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                           </button>
-                          <button className="pc-btn cancel" onClick={cancelEdit}>✕</button>
+                          <button className="pc-btn cancel" onClick={cancelEdit} title="Cancelar">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          </button>
                         </div>
                       </div>
                     ) : (
-                      <span className="pc-tier-price" onClick={() => startEdit(tier)} title="Click para editar">
+                      <button className="pc-tier-price" onClick={() => startEdit(tier)} title="Click para editar">
                         {formatCLP(tier.price)}
-                      </span>
+                        <svg className="pc-edit-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                      </button>
                     )}
                   </div>
                 ))}

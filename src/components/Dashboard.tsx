@@ -12,10 +12,13 @@ interface Props {
 export default function Dashboard({ onNavigate }: Props) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchClients({ limit: 100 }).then((res) => setClients(res.clients)).catch(() => {});
-    fetchOrders({ limit: 100 }).then((res) => setOrders(res.orders)).catch(() => {});
+    Promise.all([
+      fetchClients({ limit: 100 }).then((res) => setClients(res.clients)).catch(() => {}),
+      fetchOrders({ limit: 100 }).then((res) => setOrders(res.orders)).catch(() => {}),
+    ]).finally(() => setLoading(false));
   }, []);
 
   const stats = useMemo(() => {
@@ -46,6 +49,42 @@ export default function Dashboard({ onNavigate }: Props) {
 
     return { unpaidTotal, paidTotal, unpaidCount: unpaid.length, ordersToday: ordersToday.length, totalOrders: orders.length, activeClients: clients.filter((c) => c.is_active).length, topClients, byService };
   }, [orders, clients]);
+
+  if (loading) {
+    return (
+      <div className="dashboard">
+        <div className="stat-grid">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className={`stat-card stat-card-skeleton${i === 0 ? ' accent' : ''}`}>
+              <span className="skeleton-block skeleton-label" />
+              <span className="skeleton-block skeleton-value" />
+              {i === 0 && <span className="skeleton-block skeleton-sub" />}
+            </div>
+          ))}
+        </div>
+
+        <div className="dashboard-grid">
+          {[0, 1].map((i) => (
+            <div key={i} className="dash-panel dash-panel-skeleton">
+              <div className="skeleton-block skeleton-heading" />
+              {[0, 1, 2, 3].map((j) => (
+                <div key={j} className="skeleton-row-block">
+                  <span className="skeleton-block skeleton-name" />
+                  <span className="skeleton-block skeleton-num" />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+
+        <div className="quick-actions">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="skeleton-block skeleton-btn" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard">

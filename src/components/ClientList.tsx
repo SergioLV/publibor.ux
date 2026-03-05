@@ -13,6 +13,10 @@ function tierRangeLabel(tier: PriceTier): string {
   return `${tier.min_meters}–${tier.max_meters}`;
 }
 
+function clientInitials(name: string) {
+  return name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('');
+}
+
 interface EditingClient {
   id: string;
   name: string;
@@ -33,12 +37,12 @@ export default function ClientList() {
   const [showAll, setShowAll] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [feedback, setFeedback] = useState('');
   const [editing, setEditing] = useState<EditingClient | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [tiers, setTiers] = useState<PriceTier[]>([]);
 
-  // Load tiers once
   useEffect(() => {
     fetchDefaultPrices().then(setTiers).catch(() => {});
   }, []);
@@ -142,6 +146,7 @@ export default function ClientList() {
           billing_addr: editing.billing_addr || undefined,
           prices: cleanPrices,
         });
+        setFeedback('Cliente creado exitosamente');
       } else {
         await apiUpdateClient(editing.id, {
           name: editing.name,
@@ -152,7 +157,9 @@ export default function ClientList() {
           is_active: editing.is_active,
           prices: cleanPrices,
         });
+        setFeedback('Cliente actualizado');
       }
+      setTimeout(() => setFeedback(''), 3000);
       setEditing(null);
       await load();
     } catch (e) {
@@ -165,38 +172,49 @@ export default function ClientList() {
   return (
     <div className="client-list">
       <div className="client-toolbar">
-        <h2>Clientes</h2>
-        <input
-          type="text"
-          placeholder="Buscar por nombre o RUT..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <label>
+        <div className="ct-search-wrap">
+          <svg className="ct-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input
+            type="text"
+            placeholder="Buscar por nombre o RUT..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <label className="ct-toggle">
           <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
-          {' '}Mostrar todos
+          <span>Mostrar inactivos</span>
         </label>
-        <button className="btn-primary" onClick={openNew}>+ Nuevo Cliente</button>
+        <button className="btn-primary" onClick={openNew}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          Nuevo Cliente
+        </button>
       </div>
 
+      {feedback && <div className="feedback-msg">{feedback}</div>}
       {error && <div className="error-msg">{error}</div>}
 
       <div className="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Nombre</th>
+            <th>Cliente</th>
             <th>RUT</th>
             <th>Email</th>
             <th>Teléfono</th>
-            <th>Activo</th>
+            <th>Estado</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           {loading && Array.from({ length: 6 }).map((_, i) => (
             <tr key={`skel-${i}`} className="skeleton-row">
-              <td><span className="skeleton-cell wide" /></td>
+              <td>
+                <div className="cl-name-cell">
+                  <span className="skeleton-cell cl-avatar-sk" />
+                  <span className="skeleton-cell wide" />
+                </div>
+              </td>
               <td><span className="skeleton-cell medium" /></td>
               <td><span className="skeleton-cell wide" /></td>
               <td><span className="skeleton-cell medium" /></td>
@@ -206,23 +224,45 @@ export default function ClientList() {
           ))}
           {!loading && clients.map((c) => (
             <tr key={c.id}>
-              <td>{c.name}</td>
-              <td>{c.rut || '—'}</td>
-              <td>{c.email || '—'}</td>
-              <td>{c.phone || '—'}</td>
-              <td>{c.is_active ? '✓' : '✗'}</td>
-              <td><button className="btn-sm" onClick={() => openEdit(c)}>Editar</button></td>
+              <td>
+                <div className="cl-name-cell">
+                  <span className="cl-avatar">{clientInitials(c.name)}</span>
+                  <span className="cl-name">{c.name}</span>
+                </div>
+              </td>
+              <td>{c.rut ? <span className="cl-mono">{c.rut}</span> : <span className="cl-empty">Sin RUT</span>}</td>
+              <td>{c.email ? <span className="cl-email">{c.email}</span> : <span className="cl-empty">Sin email</span>}</td>
+              <td>{c.phone ? <span className="cl-mono">{c.phone}</span> : <span className="cl-empty">Sin teléfono</span>}</td>
+              <td>
+                <span className={`status-badge ${c.is_active ? 'active' : 'inactive'}`}>
+                  {c.is_active ? 'Activo' : 'Inactivo'}
+                </span>
+              </td>
+              <td>
+                <button className="btn-action" onClick={() => openEdit(c)} title="Editar cliente">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+              </td>
             </tr>
           ))}
           {!loading && clients.length === 0 && (
-            <tr><td colSpan={6} style={{ textAlign: 'center' }}>Sin resultados</td></tr>
+            <tr>
+              <td colSpan={6}>
+                <div className="cl-empty-state">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  <span className="cl-empty-title">Sin clientes</span>
+                  <span className="cl-empty-desc">{search ? 'No se encontraron resultados para tu búsqueda' : 'Agrega tu primer cliente para comenzar'}</span>
+                  {!search && <button className="btn-primary cl-empty-btn" onClick={openNew}>+ Nuevo Cliente</button>}
+                </div>
+              </td>
+            </tr>
           )}
         </tbody>
       </table>
       </div>
 
-      <div className="order-footer">
-        <span>{total} clientes</span>
+      <div className="cl-footer">
+        <span className="cl-footer-count">{total} cliente{total !== 1 ? 's' : ''}</span>
         <div className="pagination">
           <button disabled={page <= 1} onClick={() => setPage(page - 1)}>← Anterior</button>
           <span>Pág {page} de {Math.max(totalPages, 1)}</span>

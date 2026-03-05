@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Poppins:wght@700;800&display=swap');
 
 * {
   margin: 0;
@@ -11,50 +11,96 @@ input, button, select, textarea {
 }
 
 :root {
-  --color-primary: #FFBE0B;
-  --color-primary-dim: rgba(255, 190, 11, 0.12);
-  --color-primary-glow: rgba(255, 190, 11, 0.3);
-  --color-accent: #FB5607;
-  --color-accent-dim: rgba(251, 86, 7, 0.12);
-  --color-bg: #0a0a0a;
-  --color-surface: #141414;
-  --color-surface-2: #1c1c1c;
-  --color-surface-3: #242424;
-  --color-border: #282828;
-  --color-border-light: #333;
-  --color-text: #e8e8e8;
-  --color-text-dim: #8a8a8a;
-  --color-text-muted: #555;
-  --color-success: #06d6a0;
-  --color-success-bg: rgba(6, 214, 160, 0.1);
-  --color-error: #ef476f;
-  --color-error-bg: rgba(239, 71, 111, 0.1);
-  --radius: 8px;
-  --radius-sm: 4px;
-  --shadow: 0 1px 3px rgba(0,0,0,0.4);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Primary palette — warm gold, refined */
+  --color-primary: #F5A623;
+  --color-primary-dim: rgba(245, 166, 35, 0.08);
+  --color-primary-glow: rgba(245, 166, 35, 0.2);
+  --color-primary-hover: #e69a1a;
+  --color-accent: #E8590C;
+  --color-accent-dim: rgba(232, 89, 12, 0.08);
+
+  /* Surfaces — deep, layered */
+  --color-bg: #09090b;
+  --color-surface: #111113;
+  --color-surface-2: #18181b;
+  --color-surface-3: #1f1f23;
+  --color-surface-hover: #1c1c20;
+
+  /* Borders — subtle, layered */
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-light: rgba(255, 255, 255, 0.1);
+  --color-border-hover: rgba(255, 255, 255, 0.14);
+
+  /* Text — high contrast hierarchy */
+  --color-text: #fafafa;
+  --color-text-dim: #a1a1aa;
+  --color-text-muted: #52525b;
+
+  /* Semantic */
+  --color-success: #10b981;
+  --color-success-bg: rgba(16, 185, 129, 0.08);
+  --color-error: #ef4444;
+  --color-error-bg: rgba(239, 68, 68, 0.08);
+  --color-warning: #f59e0b;
+  --color-warning-bg: rgba(245, 158, 11, 0.08);
+
+  /* Radii */
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-lg: 14px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 20px rgba(245, 166, 35, 0.08);
+
+  /* Typography */
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 [data-theme="light"] {
-  --color-primary: #e5a800;
-  --color-primary-dim: rgba(229, 168, 0, 0.1);
-  --color-primary-glow: rgba(229, 168, 0, 0.25);
-  --color-accent: #e04e05;
-  --color-accent-dim: rgba(224, 78, 5, 0.1);
-  --color-bg: #f5f5f4;
+  --color-primary: #d4940f;
+  --color-primary-dim: rgba(212, 148, 15, 0.07);
+  --color-primary-glow: rgba(212, 148, 15, 0.15);
+  --color-primary-hover: #c08a0d;
+  --color-accent: #c4500a;
+  --color-accent-dim: rgba(196, 80, 10, 0.07);
+
+  --color-bg: #f7f8fb;
   --color-surface: #ffffff;
-  --color-surface-2: #f0efee;
-  --color-surface-3: #e7e6e4;
-  --color-border: #ddd;
-  --color-border-light: #ccc;
-  --color-text: #1a1a1a;
-  --color-text-dim: #666;
-  --color-text-muted: #999;
+  --color-surface-2: #f3f4f6;
+  --color-surface-3: #e5e7eb;
+  --color-surface-hover: #f0f1f4;
+
+  --color-border: rgba(0, 0, 0, 0.07);
+  --color-border-light: rgba(0, 0, 0, 0.11);
+  --color-border-hover: rgba(0, 0, 0, 0.16);
+
+  --color-text: #09090b;
+  --color-text-dim: #71717a;
+  --color-text-muted: #a1a1aa;
+
   --color-success: #059669;
-  --color-success-bg: rgba(5, 150, 105, 0.08);
-  --color-error: #dc2646;
-  --color-error-bg: rgba(220, 38, 70, 0.08);
-  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --color-success-bg: rgba(5, 150, 105, 0.06);
+  --color-error: #dc2626;
+  --color-error-bg: rgba(220, 38, 38, 0.06);
+  --color-warning: #d97706;
+  --color-warning-bg: rgba(217, 119, 6, 0.06);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  --shadow-glow: 0 0 20px rgba(212, 148, 15, 0.06);
 }
 
 body {
@@ -73,7 +119,19 @@ body {
   color: #000;
 }
 
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--color-surface); }
-::-webkit-scrollbar-thumb { background: var(--color-border-light); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
+/* Scrollbar — minimal, Vercel-style */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-light);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* Focus ring — accessible, modern */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
