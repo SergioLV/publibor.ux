@@ -318,6 +318,16 @@ export async function apiUpdateOrder(id: string, data: {
   return mapApiOrder(res.data);
 }
 
+// --- Bulk mark paid ---
+
+export async function apiBulkMarkPaid(ids: string[]): Promise<number> {
+  const res = await apiFetch<{ updated: number }>('/orders/mark-paid', {
+    method: 'PUT',
+    body: JSON.stringify({ ids: ids.map(Number) }),
+  });
+  return res.updated;
+}
+
 // --- Cotización PDF ---
 
 export function getCotizacionUrl(orderId: string): string {

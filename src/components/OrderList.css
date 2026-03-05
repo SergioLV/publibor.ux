@@ -686,3 +686,27 @@ tr.row-selected td {
   border-color: var(--color-text-dim);
   color: var(--color-text);
 }
+
+/* Bulk mark paid button */
+.btn-mark-paid {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  background: var(--color-success, #06d6a0);
+  color: #000;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-mark-paid:hover:not(:disabled) {
+  box-shadow: 0 0 12px rgba(6, 214, 160, 0.4);
+}
+.btn-mark-paid:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { fetchClients, fetchOrders, apiUpdateOrder, getCotizacionUrl, downloadExcelExport, fetchDefaultPrices, fetchClientById } from '../data/api';
+import { fetchClients, fetchOrders, apiUpdateOrder, apiBulkMarkPaid, getCotizacionUrl, downloadExcelExport, fetchDefaultPrices, fetchClientById } from '../data/api';
 import { formatCLP, formatDate } from '../data/format';
 import type { Order, Client, PriceTier, ServiceType } from '../data/types';
 import { SERVICE_TYPES, unitLabel, isPerCloth } from '../data/types';
@@ -37,6 +37,7 @@ export default function OrderList() {
   const [selectedOrders, setSelectedOrders] = useState<Map<string, Order>>(new Map());
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [markingPaid, setMarkingPaid] = useState(false);
 
   // Edit modal state
   const [editing, setEditing] = useState<EditingOrder | null>(null);
@@ -254,6 +255,26 @@ export default function OrderList() {
     }
   }
 
+  async function handleBulkMarkPaid() {
+    const unpaidIds = Array.from(selectedOrders.values())
+      .filter((o) => !o.is_paid)
+      .map((o) => o.id);
+    if (unpaidIds.length === 0) return;
+    setMarkingPaid(true);
+    try {
+      const updated = await apiBulkMarkPaid(unpaidIds);
+      setFeedback(`${updated} orden${updated > 1 ? 'es' : ''} marcada${updated > 1 ? 's' : ''} como pagada${updated > 1 ? 's' : ''}`);
+      setTimeout(() => setFeedback(''), 3000);
+      setSelected(new Set());
+      setSelectedOrders(new Map());
+      await loadOrders();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error marcando órdenes como pagadas');
+    } finally {
+      setMarkingPaid(false);
+    }
+  }
+
   function clearFilters() {
     setFilterClient('');
     setFilterService('');
@@ -386,6 +407,11 @@ export default function OrderList() {
               <button className="btn-export" onClick={onExportClick} disabled={exporting}>
                 {exporting ? '⏳ Exportando...' : '📥 Exportar resumen'}
               </button>
+              {Array.from(selectedOrders.values()).some((o) => !o.is_paid) && (
+                <button className="btn-mark-paid" onClick={handleBulkMarkPaid} disabled={markingPaid}>
+                  {markingPaid ? '⏳ Marcando...' : '✓ Marcar como pagadas'}
+                </button>
+              )}
               <button className="btn-sm" onClick={() => { setSelected(new Set()); setSelectedOrders(new Map()); }}>Deseleccionar</button>
             </div>
           </div>
