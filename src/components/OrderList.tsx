@@ -1,11 +1,21 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { fetchClients, fetchOrders, apiUpdateOrder, getCotizacionUrl, downloadExcelExport } from '../data/api';
+import { fetchClients, fetchOrders, apiUpdateOrder, getCotizacionUrl, downloadExcelExport, fetchDefaultPrices, fetchClientById } from '../data/api';
 import { formatCLP, formatDate } from '../data/format';
-import type { Order, Client, ServiceType } from '../data/types';
-import { SERVICE_TYPES, unitLabel } from '../data/types';
+import type { Order, Client, PriceTier, ServiceType } from '../data/types';
+import { SERVICE_TYPES, unitLabel, isPerCloth } from '../data/types';
+import { getEffectivePrice, calculateOrder } from '../data/store';
 import './OrderList.css';
 
 const PAGE_SIZES = [10, 25, 50, 100];
+
+interface EditingOrder {
+  id: string;
+  client_id: string;
+  service: ServiceType;
+  description: string;
+  meters: string;
+  priceOverride: string;
+}
 
 export default function OrderList() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -28,8 +38,15 @@ export default function OrderList() {
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  // Edit modal state
+  const [editing, setEditing] = useState<EditingOrder | null>(null);
+  const [editClient, setEditClient] = useState<Client | null>(null);
+  const [tiers, setTiers] = useState<PriceTier[]>([]);
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     fetchClients({ limit: 100 }).then((res) => setClients(res.clients)).catch(() => {});
+    fetchDefaultPrices().then(setTiers).catch(() => {});
   }, []);
 
   const clientMap = useMemo(() => {
@@ -63,7 +80,6 @@ export default function OrderList() {
 
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
-  // Reset to page 1 when filters or page size change
   const filterKey = `${filterClient}|${filterService}|${filterPayment}|${filterDateFrom}|${filterDateTo}|${pageSize}`;
   const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
   if (filterKey !== prevFilterKey) {
@@ -72,6 +88,79 @@ export default function OrderList() {
   }
 
   const pageTotal = orders.reduce((s, o) => s + o.total_amount, 0);
+
+  // --- Edit modal logic ---
+
+  const availableServices = useMemo(() => {
+    const services = new Set(tiers.map((t) => t.service));
+    return SERVICE_TYPES.filter((s) => services.has(s));
+  }, [tiers]);
+
+  async function openEdit(order: Order) {
+    setEditing({
+      id: order.id,
+      client_id: order.client_id,
+      service: order.service,
+      description: order.description || '',
+      meters: String(order.meters),
+      priceOverride: '',
+    });
+    try {
+      const client = await fetchClientById(order.client_id);
+      setEditClient(client);
+    } catch {
+      setEditClient(null);
+    }
+  }
+
+  function closeEdit() {
+    setEditing(null);
+    setEditClient(null);
+  }
+
+  const editAutoPrice = useMemo(() => {
+    if (!editing || !editClient || !editing.service || !editing.meters || Number(editing.meters) < 0.1) return null;
+    return getEffectivePrice(editClient, tiers, editing.service, Number(editing.meters));
+  }, [editing, editClient, tiers]);
+
+  const editFinalPrice = editing && editing.priceOverride && Number(editing.priceOverride) > 0
+    ? Number(editing.priceOverride)
+    : editAutoPrice?.price ?? null;
+
+  const editIsManualOverride = editing
+    && editing.priceOverride !== ''
+    && Number(editing.priceOverride) > 0
+    && editAutoPrice
+    && Number(editing.priceOverride) !== editAutoPrice.price;
+
+  const editCalc = useMemo(() => {
+    if (!editFinalPrice || !editing || !editing.meters || Number(editing.meters) < 0.1) return null;
+    return calculateOrder(editFinalPrice, Number(editing.meters));
+  }, [editFinalPrice, editing]);
+
+  async function handleSaveEdit() {
+    if (!editing || !editCalc) return;
+    setSaving(true);
+    setError('');
+    try {
+      await apiUpdateOrder(editing.id, {
+        service: editing.service,
+        description: editing.description.trim() || undefined,
+        meters: Number(editing.meters),
+        unit_price: editIsManualOverride ? Number(editing.priceOverride) : undefined,
+      });
+      setFeedback(`Orden #${editing.id} actualizada`);
+      setTimeout(() => setFeedback(''), 3000);
+      closeEdit();
+      await loadOrders();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error actualizando orden');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // --- Selection logic ---
 
   function toggleSelect(id: string) {
     const order = orders.find((o) => o.id === id);
@@ -270,7 +359,12 @@ export default function OrderList() {
                   onChange={() => handleTogglePaid(o)}
                 />
               </td>
-              <td>
+              <td className="actions-cell">
+                {!o.is_paid && (
+                  <button className="btn-edit" onClick={() => openEdit(o)} title="Editar orden">
+                    ✏️
+                  </button>
+                )}
                 <a href={getCotizacionUrl(o.id)} target="_blank" rel="noopener noreferrer" className="btn-sm btn-pdf" title="Descargar cotización">
                   PDF
                 </a>
@@ -329,6 +423,114 @@ export default function OrderList() {
               })}
             </div>
             <button className="btn-sm modal-cancel" onClick={() => setShowClientPicker(false)}>Cancelar</button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Order Modal */}
+      {editing && (
+        <div className="modal-backdrop" onClick={closeEdit}>
+          <div className="edit-order-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="eom-header">
+              <div className="eom-header-left">
+                <h3>Editar Orden #{editing.id}</h3>
+                <span className="eom-client-name">{clientMap[editing.client_id]?.name || '—'}</span>
+              </div>
+              <button className="eom-close" onClick={closeEdit}>✕</button>
+            </div>
+
+            <div className="eom-body">
+              <div className="eom-field">
+                <label>Servicio</label>
+                <div className="eom-service-grid">
+                  {availableServices.map((s) => (
+                    <button
+                      key={s}
+                      className={`eom-service-btn ${editing.service === s ? 'selected' : ''}`}
+                      onClick={() => setEditing({ ...editing, service: s, meters: '', priceOverride: '' })}
+                    >
+                      <span>{s}</span>
+                      <span className="eom-service-unit">por {unitLabel(s)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="eom-row">
+                <div className="eom-field">
+                  <label>{isPerCloth(editing.service) ? 'Cantidad de paños' : 'Cantidad (metros)'}</label>
+                  <input
+                    type="number"
+                    min={isPerCloth(editing.service) ? '1' : '0.1'}
+                    step={isPerCloth(editing.service) ? '1' : '0.1'}
+                    value={editing.meters}
+                    onChange={(e) => setEditing({ ...editing, meters: e.target.value, priceOverride: '' })}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="eom-field">
+                  <label>Descripción</label>
+                  <input
+                    type="text"
+                    value={editing.description}
+                    onChange={(e) => setEditing({ ...editing, description: e.target.value })}
+                    placeholder="Opcional"
+                  />
+                </div>
+              </div>
+
+              {editAutoPrice && (
+                <div className="eom-price-info">
+                  <span className="eom-price-suggested">
+                    Precio sugerido: {formatCLP(editAutoPrice.price)}/{unitLabel(editing.service)}
+                    {editAutoPrice.isOverride && <span className="eom-override-badge">Especial</span>}
+                  </span>
+                  <div className="eom-price-override">
+                    <label>Precio unitario (CLP/{unitLabel(editing.service)})</label>
+                    <div className="eom-price-input-wrap">
+                      <span className="eom-price-prefix">$</span>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={editing.priceOverride}
+                        onChange={(e) => setEditing({ ...editing, priceOverride: e.target.value })}
+                        placeholder={String(editAutoPrice.price)}
+                      />
+                    </div>
+                    {editIsManualOverride && (
+                      <button className="btn-sm" onClick={() => setEditing({ ...editing, priceOverride: '' })}>
+                        Usar sugerido
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {editCalc && (
+                <div className="eom-summary">
+                  <div className="eom-summary-row">
+                    <span>Subtotal</span>
+                    <span>{formatCLP(editCalc.subtotal)}</span>
+                  </div>
+                  <div className="eom-summary-row">
+                    <span>IVA 19%</span>
+                    <span>{formatCLP(editCalc.tax_amount)}</span>
+                  </div>
+                  <div className="eom-summary-row total">
+                    <span>Total</span>
+                    <span>{formatCLP(editCalc.total_amount)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="eom-actions">
+              <button className="btn-ghost" onClick={closeEdit}>Cancelar</button>
+              <button className="btn-primary" onClick={handleSaveEdit} disabled={saving || !editCalc}>
+                {saving ? 'Guardando...' : 'Guardar Cambios'}
+              </button>
+            </div>
           </div>
         </div>
       )}

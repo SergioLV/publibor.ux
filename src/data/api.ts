@@ -298,12 +298,22 @@ export async function apiCreateOrder(data: {
 }
 
 export async function apiUpdateOrder(id: string, data: {
+  service?: string;
   description?: string;
+  meters?: number;
+  unit_price?: number;
   is_paid?: boolean;
 }): Promise<Order> {
+  const body: Record<string, unknown> = {};
+  if (data.service !== undefined) body.service = data.service;
+  if (data.description !== undefined) body.description = data.description || null;
+  if (data.meters !== undefined) body.meters = data.meters;
+  if (data.unit_price !== undefined) body.unit_price = data.unit_price;
+  if (data.is_paid !== undefined) body.is_paid = data.is_paid;
+
   const res = await apiFetch<{ data: ApiOrder }>(`/orders/${id}`, {
     method: 'PUT',
-    body: JSON.stringify(data),
+    body: JSON.stringify(body),
   });
   return mapApiOrder(res.data);
 }
