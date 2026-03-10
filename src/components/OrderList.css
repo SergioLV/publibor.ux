@@ -1071,6 +1071,80 @@ tr.row-selected td { background: var(--color-primary-dim); }
   padding-top: 0.75rem;
 }
 
+/* Forma de pago */
+.fm-pago-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--color-border);
+}
+.fm-pago-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+.fm-pago-options {
+  display: flex;
+  gap: 0.35rem;
+}
+.fm-pago-btn {
+  flex: 1;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-dim);
+  font-size: 0.82rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.fm-pago-btn:hover {
+  border-color: var(--color-border-hover);
+  color: var(--color-text);
+}
+.fm-pago-btn.selected {
+  background: var(--color-primary-dim);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+.fm-pago-dias {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+.fm-pago-dias label {
+  font-size: 0.78rem;
+  color: var(--color-text-dim);
+  white-space: nowrap;
+}
+.fm-pago-dias input {
+  width: 70px;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.82rem;
+  font-family: inherit;
+  text-align: center;
+}
+.fm-pago-dias input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+.fm-pago-venc-date {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
 .fm-actions-row {
   display: flex;
   gap: 0.5rem;

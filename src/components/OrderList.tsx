@@ -46,6 +46,8 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
   const [facturando, setFacturando] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [fmaPago, setFmaPago] = useState<1 | 2>(1);
+  const [diasVencimiento, setDiasVencimiento] = useState(30);
 
   // Edit modal state
   const [editing, setEditing] = useState<EditingOrder | null>(null);
@@ -309,7 +311,16 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
     if (facturableOrders.length === 0 || facturarClientIds.length !== 1) return;
     setFacturando(true);
     try {
-      await apiCreateInvoice(facturableOrders.map((o) => Number(o.id)));
+      const today = new Date();
+      let fchVenc: string;
+      if (fmaPago === 2) {
+        const venc = new Date(today);
+        venc.setDate(venc.getDate() + diasVencimiento);
+        fchVenc = venc.toISOString().split('T')[0];
+      } else {
+        fchVenc = today.toISOString().split('T')[0];
+      }
+      await apiCreateInvoice(facturableOrders.map((o) => Number(o.id)), fmaPago, fchVenc);
     } catch {
       // silently continue — SII processes async
     }
@@ -317,6 +328,8 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
     setPreviewUrl(null);
     setSelected(new Set());
     setSelectedOrders(new Map());
+    setFmaPago(1);
+    setDiasVencimiento(30);
     setFeedback('sii');
     setTimeout(() => setFeedback(''), 5000);
     setFacturando(false);
@@ -688,6 +701,41 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
                   <div className="fm-total-row"><span>Neto</span><span>{formatCLP(facturableOrders.reduce((s, o) => s + o.subtotal, 0))}</span></div>
                   <div className="fm-total-row"><span>IVA 19%</span><span>{formatCLP(facturableOrders.reduce((s, o) => s + o.tax_amount, 0))}</span></div>
                   <div className="fm-total-row grand"><span>Total</span><span>{formatCLP(facturableOrders.reduce((s, o) => s + o.total_amount, 0))}</span></div>
+                </div>
+                <div className="fm-pago-section">
+                  <label className="fm-pago-label">Forma de pago</label>
+                  <div className="fm-pago-options">
+                    <button
+                      className={`fm-pago-btn ${fmaPago === 1 ? 'selected' : ''}`}
+                      onClick={() => setFmaPago(1)}
+                    >
+                      Contado
+                    </button>
+                    <button
+                      className={`fm-pago-btn ${fmaPago === 2 ? 'selected' : ''}`}
+                      onClick={() => setFmaPago(2)}
+                    >
+                      Crédito
+                    </button>
+                  </div>
+                  {fmaPago === 2 && (
+                    <div className="fm-pago-dias">
+                      <label>Días de vencimiento</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={diasVencimiento}
+                        onChange={(e) => setDiasVencimiento(Math.max(1, Number(e.target.value)))}
+                      />
+                      <span className="fm-pago-venc-date">
+                        Vence: {(() => {
+                          const d = new Date();
+                          d.setDate(d.getDate() + diasVencimiento);
+                          return d.toISOString().split('T')[0];
+                        })()}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="fm-actions">
                   {facturarClientMissing ? (

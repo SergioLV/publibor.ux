@@ -495,10 +495,10 @@ export async function apiPreviewInvoice(orderIds: number[]): Promise<string> {
   return URL.createObjectURL(blob);
 }
 
-export async function apiCreateInvoice(orderIds: number[]): Promise<Invoice> {
+export async function apiCreateInvoice(orderIds: number[], fmaPago: number, fchVenc: string): Promise<Invoice> {
   const res = await apiFetch<{ data: ApiInvoice }>('/invoices', {
     method: 'POST',
-    body: JSON.stringify({ order_ids: orderIds }),
+    body: JSON.stringify({ order_ids: orderIds, fma_pago: fmaPago, fch_venc: fchVenc }),
   });
   return mapApiInvoice(res.data);
 }
