@@ -24,6 +24,9 @@ interface EditingClient {
   email: string;
   phone: string;
   billing_addr: string;
+  giro: string;
+  comuna: string;
+  ciudad: string;
   is_active: boolean;
   prices: { default_price_id: number; price: number | '' }[];
 }
@@ -41,7 +44,9 @@ export default function ClientList() {
   const [editing, setEditing] = useState<EditingClient | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(false);
   const [tiers, setTiers] = useState<PriceTier[]>([]);
+  const [openAccordion, setOpenAccordion] = useState<ServiceType | null>(null);
 
   useEffect(() => {
     fetchDefaultPrices().then(setTiers).catch(() => {});
@@ -87,6 +92,9 @@ export default function ClientList() {
       email: '',
       phone: '',
       billing_addr: '',
+      giro: '',
+      comuna: '',
+      ciudad: '',
       is_active: true,
       prices: [],
     });
@@ -95,6 +103,20 @@ export default function ClientList() {
   async function openEdit(c: Client) {
     setIsNew(false);
     setError('');
+    setLoadingEdit(true);
+    setEditing({
+      id: c.id,
+      name: c.name,
+      rut: c.rut || '',
+      email: '',
+      phone: '',
+      billing_addr: '',
+      giro: '',
+      comuna: '',
+      ciudad: '',
+      is_active: c.is_active,
+      prices: [],
+    });
     try {
       const full = await fetchClientById(c.id);
       setEditing({
@@ -104,11 +126,17 @@ export default function ClientList() {
         email: full.email || '',
         phone: full.phone || '',
         billing_addr: full.billing_addr || '',
+        giro: full.giro || '',
+        comuna: full.comuna || '',
+        ciudad: full.ciudad || '',
         is_active: full.is_active,
         prices: full.prices.map((p) => ({ default_price_id: p.default_price_id, price: p.price })),
       });
     } catch (e) {
+      setEditing(null);
       setError(e instanceof Error ? e.message : 'Error cargando cliente');
+    } finally {
+      setLoadingEdit(false);
     }
   }
 
@@ -144,6 +172,9 @@ export default function ClientList() {
           email: editing.email || undefined,
           phone: editing.phone || undefined,
           billing_addr: editing.billing_addr || undefined,
+          giro: editing.giro || undefined,
+          comuna: editing.comuna || undefined,
+          ciudad: editing.ciudad || undefined,
           prices: cleanPrices,
         });
         setFeedback('Cliente creado exitosamente');
@@ -154,6 +185,9 @@ export default function ClientList() {
           email: editing.email || undefined,
           phone: editing.phone || undefined,
           billing_addr: editing.billing_addr || undefined,
+          giro: editing.giro || undefined,
+          comuna: editing.comuna || undefined,
+          ciudad: editing.ciudad || undefined,
           is_active: editing.is_active,
           prices: cleanPrices,
         });
@@ -271,13 +305,45 @@ export default function ClientList() {
       </div>
 
       {editing && (
-        <div className="modal-overlay" onClick={() => setEditing(null)}>
+        <div className="modal-overlay" onClick={() => { if (!loadingEdit) setEditing(null); }}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{isNew ? 'Nuevo Cliente' : 'Editar Cliente'}</h3>
               <button className="modal-close" onClick={() => setEditing(null)}>✕</button>
             </div>
 
+            {loadingEdit ? (
+              <>
+                <div className="modal-section">
+                  <div className="section-label">Información general</div>
+                  <div className="form-grid">
+                    <label className="span-2">Nombre *<span className="skeleton-input" /></label>
+                    <label>RUT<span className="skeleton-input" /></label>
+                    <label>Giro<span className="skeleton-input" /></label>
+                    <label>Email<span className="skeleton-input" /></label>
+                    <label>Teléfono<span className="skeleton-input" /></label>
+                    <label className="span-2">Dirección facturación<span className="skeleton-input" /></label>
+                    <label>Comuna<span className="skeleton-input" /></label>
+                    <label>Ciudad<span className="skeleton-input" /></label>
+                  </div>
+                </div>
+                <div className="modal-section">
+                  <div className="section-label">Precios preferenciales</div>
+                  <div className="pref-services">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="skeleton-accordion">
+                        <div className="skeleton-accordion-bar" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="modal-actions">
+                  <span className="skeleton-btn" />
+                  <span className="skeleton-btn wide" />
+                </div>
+              </>
+            ) : (
+              <>
             <div className="modal-section">
               <div className="section-label">Información general</div>
               <div className="form-grid">
@@ -287,14 +353,23 @@ export default function ClientList() {
                 <label>RUT
                   <input value={editing.rut} onChange={(e) => setEditing({ ...editing, rut: e.target.value })} placeholder="12.345.678-9" />
                 </label>
-                <label>Teléfono
-                  <input value={editing.phone} onChange={(e) => setEditing({ ...editing, phone: e.target.value })} placeholder="+56 9 1234 5678" />
+                <label>Giro
+                  <input value={editing.giro} onChange={(e) => setEditing({ ...editing, giro: e.target.value })} placeholder="Servicios de impresión" />
                 </label>
                 <label>Email
                   <input value={editing.email} onChange={(e) => setEditing({ ...editing, email: e.target.value })} placeholder="contacto@empresa.cl" />
                 </label>
-                <label>Dirección facturación
+                <label>Teléfono
+                  <input value={editing.phone} onChange={(e) => setEditing({ ...editing, phone: e.target.value })} placeholder="+56 9 1234 5678" />
+                </label>
+                <label className="span-2">Dirección facturación
                   <input value={editing.billing_addr} onChange={(e) => setEditing({ ...editing, billing_addr: e.target.value })} placeholder="Av. Principal 123" />
+                </label>
+                <label>Comuna
+                  <input value={editing.comuna} onChange={(e) => setEditing({ ...editing, comuna: e.target.value })} placeholder="Santiago" />
+                </label>
+                <label>Ciudad
+                  <input value={editing.ciudad} onChange={(e) => setEditing({ ...editing, ciudad: e.target.value })} placeholder="Santiago" />
                 </label>
               </div>
               {!isNew && (
@@ -309,42 +384,59 @@ export default function ClientList() {
 
             <div className="modal-section">
               <div className="section-label">Precios preferenciales</div>
-              <p className="prices-hint">Ingresa un precio solo si el cliente tiene tarifa especial. Los campos vacíos usan el precio por defecto.</p>
+              <p className="prices-hint">Solo si el cliente tiene tarifa especial. Vacío = precio por defecto.</p>
               <div className="pref-services">
                 {SERVICE_TYPES.map((service) => {
                   const serviceTiers = tiersGrouped[service] || [];
                   if (serviceTiers.length === 0) return null;
+                  const isOpen = openAccordion === service;
+                  const overrideCount = serviceTiers.filter((t) => {
+                    const v = getEditPrice(t.id);
+                    return v !== '' && Number(v) > 0;
+                  }).length;
                   return (
-                    <div key={service} className="pref-service-card">
-                      <div className="pref-card-header">
-                        <span className="pref-card-service">{service}</span>
-                        <span className="pref-card-unit">por {unitLabel(service)}</span>
-                      </div>
-                      <div className="pref-card-tiers">
-                        {serviceTiers.map((tier) => {
-                          const val = getEditPrice(tier.id);
-                          const hasOverride = val !== '' && Number(val) > 0;
-                          return (
-                            <div key={tier.id} className={`pref-tier-row ${hasOverride ? 'has-override' : ''}`}>
-                              <div className="pref-tier-info">
-                                <span className="pref-tier-range">{tierRangeLabel(tier)} {unitLabel(service)}</span>
-                                <span className="pref-tier-default">Base: {formatCLP(tier.price)}</span>
+                    <div key={service} className={`pref-service-card ${isOpen ? 'pref-open' : ''}`}>
+                      <button
+                        type="button"
+                        className="pref-card-header pref-card-toggle"
+                        onClick={() => setOpenAccordion(isOpen ? null : service)}
+                      >
+                        <div className="pref-card-header-left">
+                          <span className={`pref-chevron ${isOpen ? 'pref-chevron-open' : ''}`}>›</span>
+                          <span className="pref-card-service">{service}</span>
+                          <span className="pref-card-unit">por {unitLabel(service)}</span>
+                        </div>
+                        {overrideCount > 0 && (
+                          <span className="pref-override-count">{overrideCount} especial{overrideCount > 1 ? 'es' : ''}</span>
+                        )}
+                      </button>
+                      {isOpen && (
+                        <div className="pref-card-tiers">
+                          {serviceTiers.map((tier) => {
+                            const val = getEditPrice(tier.id);
+                            const hasOverride = val !== '' && Number(val) > 0;
+                            return (
+                              <div key={tier.id} className={`pref-tier-row ${hasOverride ? 'has-override' : ''}`}>
+                                <div className="pref-tier-info">
+                                  <span className="pref-tier-range">{tierRangeLabel(tier)} {unitLabel(service)}</span>
+                                  <span className="pref-tier-default">Base: {formatCLP(tier.price)}</span>
+                                </div>
+                                <div className="pref-tier-input-wrap">
+                                  <span className="pref-input-prefix">$</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    value={val}
+                                    onChange={(e) => setEditPrice(tier.id, e.target.value)}
+                                    placeholder={String(tier.price)}
+                                  />
+                                </div>
                               </div>
-                              <div className="pref-tier-input-wrap">
-                                <span className="pref-input-prefix">$</span>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="1"
-                                  value={val}
-                                  onChange={(e) => setEditPrice(tier.id, e.target.value)}
-                                  placeholder={String(tier.price)}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -357,6 +449,8 @@ export default function ClientList() {
                 {saving ? 'Guardando...' : isNew ? 'Crear Cliente' : 'Guardar Cambios'}
               </button>
             </div>
+              </>
+            )}
           </div>
         </div>
       )}

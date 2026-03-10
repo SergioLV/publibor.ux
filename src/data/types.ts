@@ -30,10 +30,18 @@ export interface Client {
   email?: string;
   phone?: string;
   billing_addr?: string;
+  giro?: string;
+  comuna?: string;
+  ciudad?: string;
   is_active: boolean;
   prices: ClientPrice[];
   created_at?: string;
   updated_at?: string;
+}
+
+export interface PurchaseOrder {
+  oc_number: string;
+  date?: string;
 }
 
 export interface Order {
@@ -51,6 +59,7 @@ export interface Order {
   paid_at: string | null;
   created_at: string;
   invoice_id: number | null;
+  purchase_orders?: PurchaseOrder[];
 }
 
 // Helper: is this service priced per cloth (not per meter)?

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import type { Client, PriceTier, ServiceType } from '../data/types';
+import type { Client, PriceTier, ServiceType, PurchaseOrder } from '../data/types';
 import { SERVICE_TYPES, unitLabel, isPerCloth } from '../data/types';
 import { getEffectivePrice, calculateOrder } from '../data/store';
 import { fetchClients, fetchClientById, fetchDefaultPrices, apiCreateOrder, fetchOrders, downloadCotizacion } from '../data/api';
@@ -40,6 +40,7 @@ export default function NewOrder({ onNavigate }: Props) {
   const [loadingClients, setLoadingClients] = useState(false);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [prevTotal, setPrevTotal] = useState<number | null>(null);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
 
   useEffect(() => {
     fetchDefaultPrices().then(setTiers).catch(() => {});
@@ -120,6 +121,10 @@ export default function NewOrder({ onNavigate }: Props) {
         description: description.trim() || undefined,
         meters: Number(quantity),
         unit_price: isManualOverride ? Number(priceOverride) : undefined,
+        purchase_orders: purchaseOrders.length > 0 ? purchaseOrders.map(po => ({
+          oc_number: po.oc_number,
+          ...(po.date ? { date: po.date } : {}),
+        })) : undefined,
       });
       setSuccess(true);
     } catch (e) {
@@ -138,6 +143,10 @@ export default function NewOrder({ onNavigate }: Props) {
         description: description.trim() || undefined,
         meters: Number(quantity),
         unit_price: isManualOverride ? Number(priceOverride) : undefined,
+        purchase_orders: purchaseOrders.length > 0 ? purchaseOrders.map(po => ({
+          oc_number: po.oc_number,
+          ...(po.date ? { date: po.date } : {}),
+        })) : undefined,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error generando cotización');
@@ -164,6 +173,7 @@ export default function NewOrder({ onNavigate }: Props) {
     setSuccess(false);
     clearClient();
     setDescription('');
+    setPurchaseOrders([]);
     setError('');
   }
 
@@ -367,6 +377,54 @@ export default function NewOrder({ onNavigate }: Props) {
               placeholder="Descripción (opcional)"
               style={{ marginTop: '0.75rem' }}
             />
+
+            {/* Purchase Orders */}
+            <div className="po-section">
+              <div className="po-header">
+                <span className="po-title">Órdenes de compra</span>
+                <button
+                  type="button"
+                  className="po-add-btn"
+                  onClick={() => setPurchaseOrders([...purchaseOrders, { oc_number: '', date: '' }])}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                  Agregar OC
+                </button>
+              </div>
+              {purchaseOrders.map((po, idx) => (
+                <div key={idx} className="po-row">
+                  <input
+                    type="text"
+                    className="po-input po-number"
+                    value={po.oc_number}
+                    onChange={(e) => {
+                      const updated = [...purchaseOrders];
+                      updated[idx] = { ...updated[idx], oc_number: e.target.value };
+                      setPurchaseOrders(updated);
+                    }}
+                    placeholder="Nº orden de compra"
+                  />
+                  <input
+                    type="date"
+                    className="po-input po-date"
+                    value={po.date || ''}
+                    onChange={(e) => {
+                      const updated = [...purchaseOrders];
+                      updated[idx] = { ...updated[idx], date: e.target.value || undefined };
+                      setPurchaseOrders(updated);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="po-remove"
+                    onClick={() => setPurchaseOrders(purchaseOrders.filter((_, i) => i !== idx))}
+                    title="Eliminar"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="no-card card-pending">
@@ -400,6 +458,12 @@ export default function NewOrder({ onNavigate }: Props) {
               <div className="side-row">
                 <span className="side-row-label">Descripción</span>
                 <span className="side-row-value side-row-desc">{description}</span>
+              </div>
+            )}
+            {purchaseOrders.length > 0 && (
+              <div className="side-row">
+                <span className="side-row-label">OC</span>
+                <span className="side-row-value">{purchaseOrders.filter(po => po.oc_number).length} orden{purchaseOrders.filter(po => po.oc_number).length !== 1 ? 'es' : ''}</span>
               </div>
             )}
           </div>

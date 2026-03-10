@@ -117,13 +117,13 @@
   justify-content: center;
   gap: 8px;
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 12px;
   background: var(--color-primary);
   color: #000;
   border: none;
   border-radius: 8px;
   font-weight: 600;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.15s;
@@ -187,30 +187,30 @@
 
 .nav-section-label {
   display: block;
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--color-text-muted);
   padding: 0 8px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .nav-section ul {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 
 .nav-section li a {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 8px;
+  padding: 9px 10px;
   color: var(--color-text-dim);
   text-decoration: none;
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   font-weight: 500;
   transition: all 0.12s ease;
   border-radius: 6px;
@@ -218,7 +218,7 @@
   white-space: nowrap;
   overflow: hidden;
   position: relative;
-  min-height: 34px;
+  min-height: 38px;
 }
 
 .nav-icon {
@@ -226,8 +226,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   color: inherit;
   opacity: 0.7;
   transition: opacity 0.12s;
