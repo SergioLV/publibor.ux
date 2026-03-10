@@ -256,7 +256,7 @@ tr.row-selected td { background: var(--color-primary-dim); }
   z-index: 50;
   background: var(--color-surface);
   border-top: 1px solid var(--color-primary);
-  padding: 0.85rem 1.5rem;
+  padding: 1rem 1.75rem;
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
   animation: slide-up 0.2s ease-out;
 }
@@ -268,32 +268,32 @@ tr.row-selected td { background: var(--color-primary-dim); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.85rem;
 }
 .ss-count {
-  font-size: 0.82rem;
+  font-size: 0.92rem;
   font-weight: 600;
   color: var(--color-primary);
 }
 .ss-actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 .ss-services {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  margin-bottom: 0.75rem;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
 }
 .ss-service-item {
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding: 0.4rem 0.6rem;
+  padding: 0.5rem 0.75rem;
   background: var(--color-surface-2);
   border-radius: var(--radius-sm);
-  font-size: 0.82rem;
+  font-size: 0.88rem;
 }
 .ss-service-name { font-weight: 600; color: var(--color-text); min-width: 110px; }
 .ss-service-qty { color: var(--color-text-dim); font-variant-numeric: tabular-nums; }
@@ -302,14 +302,14 @@ tr.row-selected td { background: var(--color-primary-dim); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 0.6rem;
+  padding-top: 0.7rem;
   border-top: 1px solid var(--color-border);
-  font-size: 0.85rem;
+  font-size: 0.92rem;
   color: var(--color-text-dim);
   font-weight: 500;
 }
 .ss-grand-amount {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: var(--color-primary);
   font-variant-numeric: tabular-nums;
@@ -319,14 +319,14 @@ tr.row-selected td { background: var(--color-primary-dim); }
 .btn-export {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.42rem 0.85rem;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem;
   background: var(--color-primary);
   color: #000;
   border: none;
   border-radius: var(--radius-sm);
   font-weight: 600;
-  font-size: 0.75rem;
+  font-size: 0.84rem;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.15s;
@@ -340,14 +340,14 @@ tr.row-selected td { background: var(--color-primary-dim); }
 .btn-mark-paid {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.42rem 0.85rem;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem;
   background: var(--color-success);
   color: #000;
   border: none;
   border-radius: var(--radius-sm);
   font-weight: 600;
-  font-size: 0.75rem;
+  font-size: 0.84rem;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.15s;
@@ -360,14 +360,14 @@ tr.row-selected td { background: var(--color-primary-dim); }
 .btn-cotizacion-bulk {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.42rem 0.85rem;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem;
   background: var(--color-surface-2);
   color: var(--color-text);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   font-weight: 600;
-  font-size: 0.75rem;
+  font-size: 0.84rem;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.15s;
@@ -392,6 +392,11 @@ tr.row-selected td { background: var(--color-primary-dim); }
 
 /* Extra bottom padding when selection bar is visible */
 .order-list.has-selection { padding-bottom: 160px; }
+
+.ss-actions .btn-sm {
+  padding: 0.5rem 0.9rem;
+  font-size: 0.82rem;
+}
 
 /* ═══════════════════════════════════════
    MODALS — Client picker, Confirm, Edit
@@ -650,6 +655,163 @@ tr.row-selected td { background: var(--color-primary-dim); }
 
 /* Summary */
 .eom-summary { border-top: 1px solid var(--color-border); padding-top: 0.85rem; }
+
+/* Edit modal skeleton */
+.eom-sk-service {
+  height: 52px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--color-surface-2) 25%, var(--color-border) 50%, var(--color-surface-2) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+.eom-sk-input {
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--color-surface-2) 25%, var(--color-border) 50%, var(--color-surface-2) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+.eom-sk-price-block {
+  height: 72px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--color-surface-2) 25%, var(--color-border) 50%, var(--color-surface-2) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+.eom-sk-po-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.eom-sk-po-bar {
+  height: 32px;
+  width: 100%;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--color-surface-2) 25%, var(--color-border) 50%, var(--color-surface-2) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+.eom-sk-po-bar.short { width: 65%; }
+.eom-sk-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.85rem;
+}
+.eom-sk-summary-row {
+  height: 14px;
+  width: 50%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--color-surface-2) 25%, var(--color-border) 50%, var(--color-surface-2) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  margin-left: auto;
+}
+.eom-sk-summary-row.wide { width: 70%; }
+
+/* Purchase Orders in edit modal */
+.eom-po-section {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem;
+}
+.eom-po-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+.eom-po-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--color-text-muted);
+}
+.eom-po-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-primary-dim);
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.eom-po-add:hover {
+  background: var(--color-primary);
+  color: #000;
+}
+.eom-po-empty {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+.eom-po-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+.eom-po-input {
+  padding: 0.4rem 0.55rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 0.78rem;
+  outline: none;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.eom-po-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-dim);
+}
+.eom-po-input::placeholder {
+  color: var(--color-text-muted);
+}
+.eom-po-number {
+  flex: 1;
+  min-width: 0;
+}
+.eom-po-date {
+  width: 140px;
+  flex-shrink: 0;
+  color-scheme: dark;
+}
+[data-theme="light"] .eom-po-date {
+  color-scheme: light;
+}
+.eom-po-remove {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.65rem;
+  cursor: pointer;
+  transition: all 0.12s;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+}
+.eom-po-remove:hover {
+  border-color: var(--color-error);
+  color: var(--color-error);
+  background: var(--color-error-bg);
+}
 .eom-summary-row {
   display: flex;
   justify-content: space-between;
@@ -735,14 +897,14 @@ tr.row-selected td { background: var(--color-primary-dim); }
 .btn-facturar {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.45rem 0.85rem;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem;
   background: var(--color-surface-2);
   color: var(--color-text);
   border: 1.5px solid var(--color-primary);
   border-radius: var(--radius-sm);
   font-weight: 700;
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.15s;
@@ -903,10 +1065,29 @@ tr.row-selected td { background: var(--color-primary-dim); }
 
 .fm-actions {
   display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 0.75rem;
   margin-top: auto;
   padding-top: 0.75rem;
+}
+
+.fm-actions-row {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.fm-missing-warning {
+  background: rgba(230, 167, 0, 0.08);
+  border: 1px solid rgba(230, 167, 0, 0.3);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+}
+
+.fm-missing-text {
+  font-size: 0.82rem;
+  color: var(--color-warning, #e6a700);
+  line-height: 1.4;
 }
 
 .btn-facturar-emit {

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { fetchClients, fetchOrders, apiUpdateOrder, apiBulkMarkPaid, getCotizacionUrl, openBulkCotizacion, downloadExcelExport, fetchDefaultPrices, fetchClientById, apiCreateInvoice, apiPreviewInvoice } from '../data/api';
 import { formatCLP, formatDate, formatDateShort } from '../data/format';
-import type { Order, Client, PriceTier, ServiceType } from '../data/types';
+import type { Order, Client, PriceTier, ServiceType, PurchaseOrder } from '../data/types';
 import { SERVICE_TYPES, unitLabel, isPerCloth } from '../data/types';
 import { getEffectivePrice, calculateOrder } from '../data/store';
 import './OrderList.css';
@@ -15,9 +15,10 @@ interface EditingOrder {
   description: string;
   meters: string;
   priceOverride: string;
+  purchase_orders: PurchaseOrder[];
 }
 
-export default function OrderList() {
+export default function OrderList({ onNavigate }: { onNavigate: (view: string) => void }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -49,6 +50,7 @@ export default function OrderList() {
   // Edit modal state
   const [editing, setEditing] = useState<EditingOrder | null>(null);
   const [editClient, setEditClient] = useState<Client | null>(null);
+  const [loadingEditClient, setLoadingEditClient] = useState(false);
   const [tiers, setTiers] = useState<PriceTier[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -112,18 +114,23 @@ export default function OrderList() {
       description: order.description || '',
       meters: String(order.meters),
       priceOverride: '',
+      purchase_orders: order.purchase_orders || [],
     });
+    setLoadingEditClient(true);
     try {
       const client = await fetchClientById(order.client_id);
       setEditClient(client);
     } catch {
       setEditClient(null);
+    } finally {
+      setLoadingEditClient(false);
     }
   }
 
   function closeEdit() {
     setEditing(null);
     setEditClient(null);
+    setLoadingEditClient(false);
   }
 
   const editAutoPrice = useMemo(() => {
@@ -156,6 +163,7 @@ export default function OrderList() {
         description: editing.description.trim() || undefined,
         meters: Number(editing.meters),
         unit_price: editIsManualOverride ? Number(editing.priceOverride) : undefined,
+        purchase_orders: editing.purchase_orders.filter(po => po.oc_number.trim()),
       });
       setFeedback(`Orden #${editing.id} actualizada`);
       setTimeout(() => setFeedback(''), 3000);
@@ -261,6 +269,19 @@ export default function OrderList() {
     facturableOrders.forEach((o) => ids.add(o.client_id));
     return Array.from(ids);
   }, [facturableOrders]);
+
+  const facturarClientMissing = useMemo(() => {
+    if (facturarClientIds.length !== 1) return null;
+    const client = clientMap[facturarClientIds[0]];
+    if (!client) return null;
+    const missing: string[] = [];
+    if (!client.rut) missing.push('RUT');
+    if (!client.giro) missing.push('Giro');
+    if (!client.comuna) missing.push('Comuna');
+    if (!client.ciudad) missing.push('Ciudad');
+    if (!client.billing_addr) missing.push('Dirección');
+    return missing.length > 0 ? missing : null;
+  }, [facturarClientIds, clientMap]);
 
   async function onFacturarClick() {
     if (facturableOrders.length === 0) return;
@@ -669,10 +690,28 @@ export default function OrderList() {
                   <div className="fm-total-row grand"><span>Total</span><span>{formatCLP(facturableOrders.reduce((s, o) => s + o.total_amount, 0))}</span></div>
                 </div>
                 <div className="fm-actions">
-                  <button className="btn-ghost" onClick={() => { setShowFacturarPreview(false); setPreviewUrl(null); }}>Cancelar</button>
-                  <button className="btn-facturar-emit" onClick={handleEmitirFactura} disabled={facturando}>
-                    {facturando ? '⏳ Emitiendo...' : '🧾 Emitir Factura'}
-                  </button>
+                  {facturarClientMissing ? (
+                    <>
+                      <div className="fm-missing-warning">
+                        <span className="fm-missing-text">
+                          ⚠️ No se puede emitir la factura, ya que los siguientes datos del cliente no están registrados: {facturarClientMissing.join(', ')}
+                        </span>
+                      </div>
+                      <div className="fm-actions-row">
+                        <button className="btn-ghost" onClick={() => { setShowFacturarPreview(false); setPreviewUrl(null); }}>Cancelar</button>
+                        <button className="btn-primary" onClick={() => { setShowFacturarPreview(false); setPreviewUrl(null); onNavigate('clients'); }}>
+                          Ir a Clientes
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="fm-actions-row">
+                      <button className="btn-ghost" onClick={() => { setShowFacturarPreview(false); setPreviewUrl(null); }}>Cancelar</button>
+                      <button className="btn-facturar-emit" onClick={handleEmitirFactura} disabled={facturando}>
+                        {facturando ? '⏳ Emitiendo...' : '🧾 Emitir Factura'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -692,6 +731,38 @@ export default function OrderList() {
               <button className="eom-close" onClick={closeEdit}>✕</button>
             </div>
 
+            {loadingEditClient ? (
+              <div className="eom-body">
+                <div className="eom-field">
+                  <label>Servicio</label>
+                  <div className="eom-service-grid">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="eom-sk-service" />
+                    ))}
+                  </div>
+                </div>
+                <div className="eom-row">
+                  <div className="eom-field">
+                    <label>Cantidad</label>
+                    <div className="eom-sk-input" />
+                  </div>
+                  <div className="eom-field">
+                    <label>Descripción</label>
+                    <div className="eom-sk-input" />
+                  </div>
+                </div>
+                <div className="eom-sk-price-block" />
+                <div className="eom-sk-po-block">
+                  <div className="eom-sk-po-bar" />
+                  <div className="eom-sk-po-bar short" />
+                </div>
+                <div className="eom-sk-summary">
+                  <div className="eom-sk-summary-row" />
+                  <div className="eom-sk-summary-row" />
+                  <div className="eom-sk-summary-row wide" />
+                </div>
+              </div>
+            ) : (
             <div className="eom-body">
               <div className="eom-field">
                 <label>Servicio</label>
@@ -760,6 +831,57 @@ export default function OrderList() {
                 </div>
               )}
 
+              {/* Purchase Orders */}
+              <div className="eom-po-section">
+                <div className="eom-po-header">
+                  <span className="eom-po-title">Órdenes de compra</span>
+                  <button
+                    type="button"
+                    className="eom-po-add"
+                    onClick={() => setEditing({ ...editing, purchase_orders: [...editing.purchase_orders, { oc_number: '', date: '' }] })}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                    Agregar OC
+                  </button>
+                </div>
+                {editing.purchase_orders.length === 0 && (
+                  <span className="eom-po-empty">Sin órdenes de compra asociadas</span>
+                )}
+                {editing.purchase_orders.map((po, idx) => (
+                  <div key={idx} className="eom-po-row">
+                    <input
+                      type="text"
+                      className="eom-po-input eom-po-number"
+                      value={po.oc_number}
+                      onChange={(e) => {
+                        const updated = [...editing.purchase_orders];
+                        updated[idx] = { ...updated[idx], oc_number: e.target.value };
+                        setEditing({ ...editing, purchase_orders: updated });
+                      }}
+                      placeholder="Nº orden de compra"
+                    />
+                    <input
+                      type="date"
+                      className="eom-po-input eom-po-date"
+                      value={po.date || ''}
+                      onChange={(e) => {
+                        const updated = [...editing.purchase_orders];
+                        updated[idx] = { ...updated[idx], date: e.target.value || undefined };
+                        setEditing({ ...editing, purchase_orders: updated });
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="eom-po-remove"
+                      onClick={() => setEditing({ ...editing, purchase_orders: editing.purchase_orders.filter((_, i) => i !== idx) })}
+                      title="Eliminar"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+
               {editCalc && (
                 <div className="eom-summary">
                   <div className="eom-summary-row">
@@ -777,10 +899,11 @@ export default function OrderList() {
                 </div>
               )}
             </div>
+            )}
 
             <div className="eom-actions">
               <button className="btn-ghost" onClick={closeEdit}>Cancelar</button>
-              <button className="btn-primary" onClick={handleSaveEdit} disabled={saving || !editCalc}>
+              <button className="btn-primary" onClick={handleSaveEdit} disabled={saving || !editCalc || loadingEditClient}>
                 {saving ? 'Guardando...' : 'Guardar Cambios'}
               </button>
             </div>

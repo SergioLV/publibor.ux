@@ -1,4 +1,4 @@
-import type { Client, ClientPrice, Invoice, Order, PriceTier, ServiceType } from './types';
+import type { Client, ClientPrice, Invoice, Order, PriceTier, PurchaseOrder, ServiceType } from './types';
 
 const API_BASE = 'https://s8agiab37c.execute-api.us-east-1.amazonaws.com/prod/api';
 
@@ -42,6 +42,9 @@ interface ApiClient {
   email: string | null;
   phone: string | null;
   billing_addr: string | null;
+  giro: string | null;
+  comuna: string | null;
+  ciudad: string | null;
   is_active: boolean;
   prices: ApiClientPrice[] | null;
   created_at: string;
@@ -74,6 +77,9 @@ function mapApiClient(api: ApiClient): Client {
     email: api.email ?? undefined,
     phone: api.phone ?? undefined,
     billing_addr: api.billing_addr ?? undefined,
+    giro: api.giro ?? undefined,
+    comuna: api.comuna ?? undefined,
+    ciudad: api.ciudad ?? undefined,
     is_active: api.is_active,
     prices,
     created_at: api.created_at,
@@ -158,6 +164,9 @@ export async function apiCreateClient(data: {
   email?: string;
   phone?: string;
   billing_addr?: string;
+  giro?: string;
+  comuna?: string;
+  ciudad?: string;
   is_active?: boolean;
   prices?: ApiClientPriceInput[];
 }): Promise<Client> {
@@ -167,6 +176,9 @@ export async function apiCreateClient(data: {
     email: data.email || null,
     phone: data.phone || null,
     billing_addr: data.billing_addr || null,
+    giro: data.giro || null,
+    comuna: data.comuna || null,
+    ciudad: data.ciudad || null,
     prices: data.prices && data.prices.length > 0 ? data.prices : null,
   };
   const res = await apiFetch<{ data: ApiClient }>('/clients', {
@@ -182,6 +194,9 @@ export async function apiUpdateClient(id: string, data: {
   email?: string;
   phone?: string;
   billing_addr?: string;
+  giro?: string;
+  comuna?: string;
+  ciudad?: string;
   is_active?: boolean;
   prices?: ApiClientPriceInput[];
 }): Promise<Client> {
@@ -191,6 +206,9 @@ export async function apiUpdateClient(id: string, data: {
   if (data.email !== undefined) body.email = data.email || null;
   if (data.phone !== undefined) body.phone = data.phone || null;
   if (data.billing_addr !== undefined) body.billing_addr = data.billing_addr || null;
+  if (data.giro !== undefined) body.giro = data.giro || null;
+  if (data.comuna !== undefined) body.comuna = data.comuna || null;
+  if (data.ciudad !== undefined) body.ciudad = data.ciudad || null;
   if (data.is_active !== undefined) body.is_active = data.is_active;
   if (data.prices !== undefined) body.prices = data.prices.length > 0 ? data.prices : null;
 
@@ -218,6 +236,7 @@ interface ApiOrder {
   paid_at: string | null;
   created_at: string;
   invoice_id: number | null;
+  purchase_orders?: { id?: number; oc_number: string; date?: string | null }[];
 }
 
 function mapApiOrder(api: ApiOrder): Order {
@@ -236,6 +255,10 @@ function mapApiOrder(api: ApiOrder): Order {
     paid_at: api.paid_at,
     created_at: api.created_at,
     invoice_id: api.invoice_id,
+    purchase_orders: api.purchase_orders?.map(po => ({
+      oc_number: po.oc_number,
+      date: po.date ?? undefined,
+    })),
   };
 }
 
@@ -283,6 +306,7 @@ export async function apiCreateOrder(data: {
   description?: string;
   meters: number;
   unit_price?: number;
+  purchase_orders?: PurchaseOrder[];
 }): Promise<Order> {
   const body: Record<string, unknown> = {
     client_id: data.client_id,
@@ -291,6 +315,7 @@ export async function apiCreateOrder(data: {
   };
   if (data.description) body.description = data.description;
   if (data.unit_price !== undefined) body.unit_price = data.unit_price;
+  if (data.purchase_orders && data.purchase_orders.length > 0) body.purchase_orders = data.purchase_orders;
 
   const res = await apiFetch<{ data: ApiOrder }>('/orders', {
     method: 'POST',
@@ -305,6 +330,7 @@ export async function apiUpdateOrder(id: string, data: {
   meters?: number;
   unit_price?: number;
   is_paid?: boolean;
+  purchase_orders?: PurchaseOrder[];
 }): Promise<Order> {
   const body: Record<string, unknown> = {};
   if (data.service !== undefined) body.service = data.service;
@@ -312,6 +338,9 @@ export async function apiUpdateOrder(id: string, data: {
   if (data.meters !== undefined) body.meters = data.meters;
   if (data.unit_price !== undefined) body.unit_price = data.unit_price;
   if (data.is_paid !== undefined) body.is_paid = data.is_paid;
+  if (data.purchase_orders !== undefined) body.purchase_orders = data.purchase_orders.length > 0
+    ? data.purchase_orders.map(po => ({ oc_number: po.oc_number, ...(po.date ? { date: po.date } : {}) }))
+    : [];
 
   const res = await apiFetch<{ data: ApiOrder }>(`/orders/${id}`, {
     method: 'PUT',
@@ -342,13 +371,14 @@ export async function openBulkCotizacion(orderIds: string[]): Promise<void> {
     const text = await res.text().catch(() => '');
     throw new Error(`API ${res.status}: ${text || res.statusText}`);
   }
-  const html = await res.text();
-  const win = window.open('', '_blank');
-  if (win) {
-    win.document.write(html);
-    win.document.close();
-  }
+  const json = await res.json();
+  const bytes = atob(json.data);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  const blob = new Blob([arr], { type: json.type || 'application/pdf' });
+  window.open(URL.createObjectURL(blob));
 }
+
 
 export function getBulkCotizacionUrl(orderIds: string[]): string {
   return `${API_BASE}/orders/cotizacion?order_ids=${orderIds.join(',')}`;
@@ -388,6 +418,7 @@ export async function downloadCotizacion(data: {
   description?: string;
   meters: number;
   unit_price?: number;
+  purchase_orders?: PurchaseOrder[];
 }): Promise<void> {
   const payload: Record<string, unknown> = {
     client_id: data.client_id,
@@ -396,6 +427,7 @@ export async function downloadCotizacion(data: {
   };
   if (data.description) payload.description = data.description;
   if (data.unit_price !== undefined) payload.unit_price = data.unit_price;
+  if (data.purchase_orders && data.purchase_orders.length > 0) payload.purchase_orders = data.purchase_orders;
 
   const res = await fetch(`${API_BASE}/cotizacion`, {
     method: 'POST',
