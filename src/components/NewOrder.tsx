@@ -242,7 +242,7 @@ export default function NewOrder({ onNavigate }: Props) {
               {showDropdown && !loadingClients && filteredClients.length > 0 && (
                 <ul className="dropdown-list">
                   {filteredClients.map((c) => (
-                    <li key={c.id} onClick={() => selectClient(c.id, c.name)}>
+                    <li key={c.id} onMouseDown={(e) => { e.preventDefault(); selectClient(c.id, c.name); }}>
                       <span className="dd-name">{c.name}</span>
                       {c.rut && <span className="dd-rut">{c.rut}</span>}
                     </li>

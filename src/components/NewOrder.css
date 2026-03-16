@@ -162,10 +162,12 @@
   padding: 1.15rem 1.25rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: var(--shadow-sm);
+  position: relative;
 }
 .no-card.card-active {
   border-left-color: var(--color-primary);
   box-shadow: var(--shadow-md), var(--shadow-glow);
+  z-index: 20;
 }
 .no-card.card-done { opacity: 0.7; transform: scale(0.99); }
 .no-card.card-done:hover { opacity: 0.9; }
