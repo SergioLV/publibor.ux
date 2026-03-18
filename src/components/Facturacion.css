@@ -23,6 +23,11 @@
   color: var(--color-error);
   border: 1px solid rgba(239, 68, 68, 0.15);
 }
+.fi-toast-success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+}
 
 @keyframes fi-spin {
   from { transform: rotate(0deg); }
@@ -308,6 +313,108 @@
 .fi-view-btn:hover {
   background: var(--color-surface-2);
   color: var(--color-text);
+}
+
+/* Retry button in table */
+.fi-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.fi-retry-btn:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: var(--color-warning);
+}
+.fi-retry-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* PDF button in table */
+.fi-pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-dim);
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.fi-pdf-btn:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: var(--color-primary);
+}
+.fi-pdf-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* PDF button in detail slide-over */
+.fi-detail-pdf-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.6rem 1rem;
+  background: var(--color-primary-dim);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.fi-detail-pdf-btn:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: var(--color-primary);
+}
+.fi-detail-pdf-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* Detail action buttons container */
+.fi-detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Resend button in detail */
+.fi-resend-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.6rem 1rem;
+  background: var(--color-warning-bg);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-sm);
+  color: var(--color-warning);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.fi-resend-btn:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: var(--color-warning);
+}
+.fi-resend-btn:disabled { opacity: 0.5; cursor: default; }
+
+.fi-cell-action {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  justify-content: flex-end;
 }
 
 /* Skeleton */

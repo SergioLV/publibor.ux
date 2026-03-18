@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { fetchClients, fetchInvoices } from '../data/api';
+import { fetchClients, fetchInvoices, apiResendInvoice, apiGetInvoicePdf } from '../data/api';
 import { formatCLP } from '../data/format';
 import type { Invoice, InvoiceStatus, Client } from '../data/types';
 import './Facturacion.css';
@@ -17,6 +17,9 @@ export default function Facturacion() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [detailInvoice, setDetailInvoice] = useState<Invoice | null>(null);
+  const [resendingId, setResendingId] = useState<number | null>(null);
+  const [feedback, setFeedback] = useState('');
+  const [loadingPdfId, setLoadingPdfId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchClients({ limit: 100 }).then((res) => setClients(res.clients)).catch(() => {});
@@ -66,6 +69,38 @@ export default function Facturacion() {
     return fecha;
   }
 
+  async function handleResend(invoiceId: number, e?: React.MouseEvent) {
+    if (e) e.stopPropagation();
+    setResendingId(invoiceId);
+    setError('');
+    try {
+      await apiResendInvoice(invoiceId);
+      setFeedback(`Factura #${invoiceId} reenviada al SII`);
+      setTimeout(() => setFeedback(''), 4000);
+      setDetailInvoice(null);
+      await loadInvoices();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error reenviando factura');
+      setTimeout(() => setError(''), 5000);
+    } finally {
+      setResendingId(null);
+    }
+  }
+
+  async function handleViewPdf(invoiceId: number, e?: React.MouseEvent) {
+    if (e) e.stopPropagation();
+    setLoadingPdfId(invoiceId);
+    try {
+      const blobUrl = await apiGetInvoicePdf(invoiceId);
+      window.open(blobUrl);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error obteniendo PDF');
+      setTimeout(() => setError(''), 5000);
+    } finally {
+      setLoadingPdfId(null);
+    }
+  }
+
   if (!loading && invoices.length === 0 && !error) {
     return (
       <div className="fi-page">
@@ -83,6 +118,7 @@ export default function Facturacion() {
   return (
     <div className="fi-page">
       {error && <div className="fi-toast fi-toast-error">{error}</div>}
+      {feedback && <div className="fi-toast fi-toast-success">{feedback}</div>}
 
       {/* KPI Cards */}
       <div className="fi-kpis">
@@ -184,6 +220,26 @@ export default function Facturacion() {
                     <span className={`fi-status fi-status-${inv.status}`}>{STATUS_LABELS[inv.status]}</span>
                   </td>
                   <td className="fi-cell-action">
+                    {inv.status === 'emitted' && (
+                      <button
+                        className="fi-pdf-btn"
+                        onClick={(e) => handleViewPdf(inv.id, e)}
+                        disabled={loadingPdfId === inv.id}
+                        title="Ver PDF"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      </button>
+                    )}
+                    {inv.status === 'failed' && (
+                      <button
+                        className="fi-retry-btn"
+                        onClick={(e) => handleResend(inv.id, e)}
+                        disabled={resendingId === inv.id}
+                        title="Reintentar envío"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={resendingId === inv.id ? 'fi-spin' : ''}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                      </button>
+                    )}
                     <button className="fi-view-btn" onClick={(e) => { e.stopPropagation(); setDetailInvoice(inv); }} title="Ver detalle">
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                     </button>
@@ -248,6 +304,29 @@ export default function Facturacion() {
                 <span>{detailInvoice.error_message}</span>
               </div>
             )}
+
+            <div className="fi-detail-actions">
+              {detailInvoice.status === 'emitted' && (
+                <button
+                  className="fi-detail-pdf-btn"
+                  onClick={() => handleViewPdf(detailInvoice.id)}
+                  disabled={loadingPdfId === detailInvoice.id}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  {loadingPdfId === detailInvoice.id ? 'Cargando PDF...' : 'Ver PDF'}
+                </button>
+              )}
+              {detailInvoice.status === 'failed' && (
+                <button
+                  className="fi-resend-btn"
+                  onClick={() => handleResend(detailInvoice.id)}
+                  disabled={resendingId === detailInvoice.id}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={resendingId === detailInvoice.id ? 'fi-spin' : ''}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  {resendingId === detailInvoice.id ? 'Reenviando...' : 'Reintentar envío al SII'}
+                </button>
+              )}
+            </div>
 
             <div className="fi-detail-totals">
               <div className="fi-detail-total-row">

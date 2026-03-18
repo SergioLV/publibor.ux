@@ -515,3 +515,20 @@ export async function fetchInvoices(params?: { client_id?: string }): Promise<In
   const res = await apiFetch<{ data: ApiInvoice[] }>(`/invoices${query ? `?${query}` : ''}`);
   return res.data.map(mapApiInvoice);
 }
+
+export async function apiResendInvoice(id: number): Promise<{ message: string; order_ids: number[] }> {
+  return apiFetch<{ message: string; order_ids: number[] }>(`/invoices/${id}/resend`, {
+    method: 'POST',
+  });
+}
+
+export async function apiGetInvoicePdf(id: number): Promise<string> {
+  const res = await apiFetch<{ data: string; type: string }>(`/invoices/${id}/pdf`);
+  const byteChars = atob(res.data);
+  const byteArray = new Uint8Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) {
+    byteArray[i] = byteChars.charCodeAt(i);
+  }
+  const blob = new Blob([byteArray], { type: res.type || 'application/pdf' });
+  return URL.createObjectURL(blob);
+}
