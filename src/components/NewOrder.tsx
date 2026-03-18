@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { Client, PriceTier, ServiceType, PurchaseOrder } from '../data/types';
-import { SERVICE_TYPES, unitLabel, isPerCloth } from '../data/types';
+import { unitLabel, isPerCloth } from '../data/types';
 import { getEffectivePrice, calculateOrder } from '../data/store';
 import { fetchClients, fetchClientById, fetchDefaultPrices, apiCreateOrder, fetchOrders, downloadCotizacion } from '../data/api';
 import { formatCLP, formatDate } from '../data/format';
