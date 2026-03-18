@@ -103,10 +103,12 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
 
   // --- Edit modal logic ---
 
-  const availableServices = useMemo(() => {
+  const availableServices = SERVICE_TYPES;
+
+  const editHasTiers = useMemo(() => {
     const services = new Set(tiers.map((t) => t.service));
-    return SERVICE_TYPES.filter((s) => services.has(s));
-  }, [tiers]);
+    return editing ? services.has(editing.service) : false;
+  }, [tiers, editing]);
 
   async function openEdit(order: Order) {
     setEditing({
@@ -150,6 +152,8 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
     && editAutoPrice
     && Number(editing.priceOverride) !== editAutoPrice.price;
 
+  const editIsManualOnly = editing && !editHasTiers;
+
   const editCalc = useMemo(() => {
     if (!editFinalPrice || !editing || !editing.meters || Number(editing.meters) < 0.1) return null;
     return calculateOrder(editFinalPrice, Number(editing.meters));
@@ -164,7 +168,7 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
         service: editing.service,
         description: editing.description.trim() || undefined,
         meters: Number(editing.meters),
-        unit_price: editIsManualOverride ? Number(editing.priceOverride) : undefined,
+        unit_price: (editIsManualOnly || editIsManualOverride) ? Number(editing.priceOverride) : undefined,
         purchase_orders: editing.purchase_orders.filter(po => po.oc_number.trim()),
       });
       setFeedback(`Orden #${editing.id} actualizada`);
@@ -830,7 +834,7 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
 
               <div className="eom-row">
                 <div className="eom-field">
-                  <label>{isPerCloth(editing.service) ? 'Cantidad de paños' : 'Cantidad (metros)'}</label>
+                  <label>{isPerCloth(editing.service) ? (editing.service === 'TEXTURIZADO' ? 'Cantidad de paños' : 'Cantidad (unidades)') : 'Cantidad (metros)'}</label>
                   <input
                     type="number"
                     min={isPerCloth(editing.service) ? '1' : '0.1'}
@@ -851,7 +855,26 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
                 </div>
               </div>
 
-              {editAutoPrice && (
+              {editIsManualOnly && (
+                <div className="eom-price-info">
+                  <div className="eom-price-override">
+                    <label>Precio unitario (CLP/{unitLabel(editing.service)}) *</label>
+                    <div className="eom-price-input-wrap">
+                      <span className="eom-price-prefix">$</span>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={editing.priceOverride}
+                        onChange={(e) => setEditing({ ...editing, priceOverride: e.target.value })}
+                        placeholder="Ingrese precio"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!editIsManualOnly && editAutoPrice && (
                 <div className="eom-price-info">
                   <span className="eom-price-suggested">
                     Precio sugerido: {formatCLP(editAutoPrice.price)}/{unitLabel(editing.service)}

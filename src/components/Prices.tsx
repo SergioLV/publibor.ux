@@ -31,6 +31,36 @@ const SERVICE_META: Record<ServiceType, { icon: string; desc: string; accent: st
     accent: '#fbbf24',
     accentDim: 'rgba(251, 191, 36, 0.1)',
   },
+  LASER_CO2: {
+    icon: '🔥',
+    desc: 'Corte láser CO2 por unidad',
+    accent: '#ef4444',
+    accentDim: 'rgba(239, 68, 68, 0.1)',
+  },
+  LASER_FIBRA: {
+    icon: '⚡',
+    desc: 'Grabado láser fibra por unidad',
+    accent: '#f97316',
+    accentDim: 'rgba(249, 115, 22, 0.1)',
+  },
+  BORDADOS: {
+    icon: '🪡',
+    desc: 'Bordado por unidad',
+    accent: '#a855f7',
+    accentDim: 'rgba(168, 85, 247, 0.1)',
+  },
+  TEXTIL: {
+    icon: '👕',
+    desc: 'Textil por unidad',
+    accent: '#14b8a6',
+    accentDim: 'rgba(20, 184, 166, 0.1)',
+  },
+  POR_CONFIRMAR: {
+    icon: '📦',
+    desc: 'Por confirmar',
+    accent: '#6b7280',
+    accentDim: 'rgba(107, 114, 128, 0.1)',
+  },
 };
 
 function tierRangeLabel(tier: PriceTier): string {

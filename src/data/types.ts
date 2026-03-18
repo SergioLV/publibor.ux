@@ -1,6 +1,6 @@
-export type ServiceType = 'DTF' | 'SUBLIMACION' | 'UV' | 'TEXTURIZADO';
+export type ServiceType = 'DTF' | 'SUBLIMACION' | 'UV' | 'TEXTURIZADO' | 'LASER_CO2' | 'LASER_FIBRA' | 'BORDADOS' | 'TEXTIL' | 'POR_CONFIRMAR';
 
-export const SERVICE_TYPES: ServiceType[] = ['DTF', 'SUBLIMACION', 'UV', 'TEXTURIZADO'];
+export const SERVICE_TYPES: ServiceType[] = ['DTF', 'SUBLIMACION', 'UV', 'TEXTURIZADO', 'LASER_CO2', 'LASER_FIBRA', 'BORDADOS', 'TEXTIL', 'POR_CONFIRMAR'];
 
 export const TAX_PCT = 19;
 
@@ -62,14 +62,19 @@ export interface Order {
   purchase_orders?: PurchaseOrder[];
 }
 
-// Helper: is this service priced per cloth (not per meter)?
+// Services priced per unit (not per meter)
+const PER_UNIT_SERVICES: Set<ServiceType> = new Set(['TEXTURIZADO', 'LASER_CO2', 'LASER_FIBRA', 'BORDADOS', 'TEXTIL', 'POR_CONFIRMAR']);
+
+// Helper: is this service priced per unit (not per meter)?
 export function isPerCloth(service: ServiceType): boolean {
-  return service === 'TEXTURIZADO';
+  return PER_UNIT_SERVICES.has(service);
 }
 
 // Helper: unit label
 export function unitLabel(service: ServiceType): string {
-  return isPerCloth(service) ? 'paño' : 'm';
+  if (service === 'TEXTURIZADO') return 'paño';
+  if (PER_UNIT_SERVICES.has(service)) return 'unidad';
+  return 'm';
 }
 
 // --- Invoice / DTE types (real API) ---
