@@ -295,6 +295,44 @@ export default function ClientList() {
       </table>
       </div>
 
+      {/* Mobile client cards */}
+      <div className="mobile-client-cards">
+        {loading && Array.from({ length: 4 }).map((_, i) => (
+          <div key={`cskel-${i}`} className="mobile-client-card skeleton-card">
+            <div className="skeleton-cell wide" />
+            <div className="skeleton-cell medium" />
+            <div className="skeleton-cell short" />
+          </div>
+        ))}
+        {!loading && clients.map((c) => (
+          <div key={c.id} className="mobile-client-card" onClick={() => openEdit(c)}>
+            <div className="mcc-top">
+              <span className="cl-avatar">{clientInitials(c.name)}</span>
+              <div className="mcc-info">
+                <span className="mcc-name">{c.name}</span>
+                {c.rut && <span className="mcc-rut">{c.rut}</span>}
+              </div>
+              <span className={`status-badge ${c.is_active ? 'active' : 'inactive'}`}>
+                {c.is_active ? 'Activo' : 'Inactivo'}
+              </span>
+            </div>
+            <div className="mcc-details">
+              {c.email && <div className="mcc-detail"><span className="mcc-label">Email</span><span>{c.email}</span></div>}
+              {c.phone && <div className="mcc-detail"><span className="mcc-label">Teléfono</span><span>{c.phone}</span></div>}
+              {!c.email && !c.phone && <span className="mcc-no-contact">Sin datos de contacto</span>}
+            </div>
+          </div>
+        ))}
+        {!loading && clients.length === 0 && (
+          <div className="mcc-empty">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span className="cl-empty-title">Sin clientes</span>
+            <span className="cl-empty-desc">{search ? 'No se encontraron resultados' : 'Agrega tu primer cliente'}</span>
+            {!search && <button className="btn-primary cl-empty-btn" onClick={openNew}>+ Nuevo Cliente</button>}
+          </div>
+        )}
+      </div>
+
       <div className="cl-footer">
         <span className="cl-footer-count">{total} cliente{total !== 1 ? 's' : ''}</span>
         <div className="pagination">

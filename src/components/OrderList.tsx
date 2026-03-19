@@ -72,6 +72,7 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
   const [tiers, setTiers] = useState<PriceTier[]>([]);
   const [saving, setSaving] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     fetchClients({ limit: 100 }).then((res) => setClients(res.clients)).catch(() => {});
@@ -482,7 +483,12 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
       )}
       {error && <div className="error-msg">{error}</div>}
 
-      <div className="order-filters">
+      <button className="mobile-filter-toggle" onClick={() => setShowFilters(!showFilters)}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        Filtros
+        <svg className={`mft-chevron ${showFilters ? 'open' : ''}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div className={`order-filters ${showFilters ? 'filters-open' : ''}`}>
         <label>Cliente
           <select value={filterClient} onChange={(e) => setFilterClient(e.target.value)}>
             <option value="">Todos</option>
@@ -601,6 +607,66 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
           )}
         </tbody>
       </table>
+      </div>
+
+      {/* Mobile card list */}
+      <div className="mobile-order-cards">
+        {loading && Array.from({ length: 3 }).map((_, i) => (
+          <div key={`mskel-${i}`} className="mobile-order-card skeleton-card">
+            <div className="skeleton-cell wide" />
+            <div className="skeleton-cell medium" />
+            <div className="skeleton-cell short" />
+          </div>
+        ))}
+        {!loading && orders.map((o) => (
+          <div
+            key={o.id}
+            className={`mobile-order-card ${selected.has(o.id) ? 'card-selected' : ''} ${!o.is_paid ? 'card-clickable' : ''}`}
+            onClick={() => !o.is_paid && openEdit(o)}
+          >
+            <div className="moc-top">
+              <div className="moc-check" onClick={(e) => e.stopPropagation()}>
+                <input type="checkbox" checked={selected.has(o.id)} onChange={() => toggleSelect(o.id)} />
+              </div>
+              <div className="moc-info">
+                <div className="moc-row-top">
+                  <span className="moc-id">#{o.id}</span>
+                  <span className={`service-pill ${o.service.toLowerCase()}`}>{serviceLabel(o.service)}</span>
+                  {userRole !== 'operator' && o.invoice_id && <span className="invoice-badge">Facturada</span>}
+                </div>
+                <span className="moc-client">{clientMap[o.client_id]?.name || '—'}</span>
+              </div>
+              {userRole !== 'operator' && (
+                <span
+                  className={`status-badge ${o.is_paid ? 'paid' : 'unpaid'}`}
+                  onClick={(e) => { e.stopPropagation(); handleTogglePaid(o); }}
+                >
+                  {o.is_paid ? 'Pagada' : 'Pendiente'}
+                </span>
+              )}
+            </div>
+            <div className="moc-details">
+              <div className="moc-detail">
+                <span className="moc-label">Fecha</span>
+                <span>{formatDateShort(o.created_at)}</span>
+              </div>
+              <div className="moc-detail">
+                <span className="moc-label">Cantidad</span>
+                <span>{o.meters} {unitLabel(o.service as ServiceType)}</span>
+              </div>
+              {userRole !== 'operator' && (
+                <div className="moc-detail">
+                  <span className="moc-label">Total</span>
+                  <span className="moc-total">{formatCLP(o.total_amount)}</span>
+                </div>
+              )}
+            </div>
+            {o.description && <div className="moc-desc">{o.description}</div>}
+          </div>
+        ))}
+        {!loading && orders.length === 0 && (
+          <div className="moc-empty">Sin órdenes</div>
+        )}
       </div>
 
       {selectionSummary && (

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
+import '../src/components/NewOrder.css';
 import Dashboard from './components/Dashboard';
 import ClientList from './components/ClientList';
 import NewOrder from './components/NewOrder';
@@ -136,11 +137,12 @@ function App() {
   // Auth gate: loading
   if (authed === null) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg)' }}>
-        <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-          <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#000' }}>P</span>
+      <div className="pb-loading-overlay" style={{ position: 'fixed' }}>
+        <div className="pb-loading-content">
+          <div className="pb-loading-spinner" />
+          <span className="pb-loading-brand">PUBLIBOR</span>
+          <span className="pb-loading-text">Cargando...</span>
         </div>
-        <span style={{ fontSize: '1.3rem', fontWeight: 800, letterSpacing: '0.12em', color: 'var(--color-text)' }}>PUBLIBOR</span>
       </div>
     );
   }

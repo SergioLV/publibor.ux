@@ -712,4 +712,119 @@ input[type="checkbox"]:hover {
     margin: 1rem;
   }
   .form-grid { grid-template-columns: 1fr; }
+
+  /* Hide table, show cards */
+  .client-list .table-wrap {
+    display: none !important;
+  }
+  .client-list .mobile-client-cards {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .cl-footer {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+  .cl-footer .pagination {
+    justify-content: center;
+  }
+}
+
+/* ═══════════════════════════════════════
+   MOBILE CLIENT CARDS
+   ═══════════════════════════════════════ */
+.mobile-client-cards {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-client-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .mobile-client-card:active {
+    background: var(--color-surface-hover);
+  }
+
+  .mcc-top {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .mcc-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .mcc-name {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mcc-rut {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .mcc-details {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--color-border);
+    flex-wrap: wrap;
+  }
+  .mcc-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+  .mcc-label {
+    font-size: 0.58rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--color-text-muted);
+  }
+  .mcc-detail span:last-child {
+    font-size: 0.78rem;
+    color: var(--color-text-dim);
+  }
+  .mcc-no-contact {
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+    font-style: italic;
+  }
+
+  .mcc-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 2rem 1rem;
+    color: var(--color-text-muted);
+  }
+  .mcc-empty svg { opacity: 0.3; }
+
+  .skeleton-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+  }
 }
