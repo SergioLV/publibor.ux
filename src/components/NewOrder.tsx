@@ -27,9 +27,10 @@ function clientInitials(name: string) {
 
 interface Props {
   onNavigate: (view: string) => void;
+  userRole?: string;
 }
 
-export default function NewOrder({ onNavigate }: Props) {
+export default function NewOrder({ onNavigate, userRole }: Props) {
   const [tiers, setTiers] = useState<PriceTier[]>([]);
   const [activeClients, setActiveClients] = useState<Client[]>([]);
   const [clientId, setClientId] = useState('');
@@ -446,54 +447,36 @@ export default function NewOrder({ onNavigate }: Props) {
               />
               <span className="qty-unit">{service ? unitLabel(service as ServiceType) : 'mts'}</span>
             </div>
-            {priceError && <div className="error-msg" style={{ marginTop: '0.5rem' }}>{priceError}</div>}
-            {isManualOnly && (
-              <div className="price-override-row" style={{ marginTop: '0.5rem' }}>
-                <label className="price-override-label">
-                  Precio unitario (CLP/{unitLabel(service as ServiceType)})
-                  <div className="price-override-input-wrap">
-                    <span className="price-prefix">$</span>
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={priceOverride}
-                      onChange={(e) => setPriceOverride(e.target.value)}
-                      placeholder="Ingrese precio"
-                    />
-                  </div>
-                </label>
-              </div>
-            )}
-            {!isManualOnly && autoPrice && (
+            {priceError && userRole !== 'operator' && <div className="error-msg" style={{ marginTop: '0.5rem' }}>{priceError}</div>}
+            {userRole !== 'operator' && !isManualOnly && autoPrice && (
               <div className="tier-info">
                 Rango: {autoPrice.tier.min_meters}{autoPrice.tier.max_meters ? `–${autoPrice.tier.max_meters}` : '+'} {unitLabel(service as ServiceType)}
                 {' · '}Precio sugerido: {formatCLP(autoPrice.price)}/{unitLabel(service as ServiceType)}
                 {autoPrice.isOverride && <span className="override-badge">Precio especial</span>}
               </div>
             )}
-            {!isManualOnly && autoPrice && (
-              <div className="price-override-row" style={{ marginTop: '0.5rem' }}>
-                <label className="price-override-label">
-                  Precio unitario (CLP/{unitLabel(service as ServiceType)})
-                  <div className="price-override-input-wrap">
-                    <span className="price-prefix">$</span>
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={priceOverride}
-                      onChange={(e) => setPriceOverride(e.target.value)}
-                      placeholder={String(autoPrice.price)}
-                    />
-                  </div>
-                </label>
-                {isManualOverride && (
-                  <button className="btn-sm" onClick={() => setPriceOverride('')} style={{ marginTop: '0.25rem' }}>
-                    Usar precio sugerido
-                  </button>
-                )}
-              </div>
+            {userRole !== 'operator' && (
+            <div className="price-override-row" style={{ marginTop: '0.5rem' }}>
+              <label className="price-override-label">
+                Precio unitario (CLP/{unitLabel(service as ServiceType)})
+                <div className="price-override-input-wrap">
+                  <span className="price-prefix">$</span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={priceOverride}
+                    onChange={(e) => setPriceOverride(e.target.value)}
+                    placeholder={autoPrice ? String(autoPrice.price) : 'Ingrese precio'}
+                  />
+                </div>
+              </label>
+              {isManualOverride && (
+                <button className="btn-sm" onClick={() => setPriceOverride('')} style={{ marginTop: '0.25rem' }}>
+                  Usar precio sugerido
+                </button>
+              )}
+            </div>
             )}
             <div className="desc-bultos-row">
               <input
@@ -518,6 +501,7 @@ export default function NewOrder({ onNavigate }: Props) {
             </div>
 
             {/* Purchase Orders */}
+            {userRole !== 'operator' && (
             <div className="po-section">
               <div className="po-header">
                 <span className="po-title">Órdenes de compra</span>
@@ -564,6 +548,7 @@ export default function NewOrder({ onNavigate }: Props) {
                 </div>
               ))}
             </div>
+            )}
 
             {/* Images */}
             <div className="img-section">
@@ -657,6 +642,8 @@ export default function NewOrder({ onNavigate }: Props) {
           <div className="side-divider" />
 
           <div className="side-rows">
+            {userRole !== 'operator' && (
+            <>
             <div className="side-row">
               <span className="side-row-label">Precio{isManualOnly ? ' (manual)' : isManualOverride ? ' (manual)' : ''}</span>
               <span className="side-row-value">{calc ? formatCLP(calc.unitPrice) + '/' + unitLabel(service as ServiceType) : '—'}</span>
@@ -669,24 +656,30 @@ export default function NewOrder({ onNavigate }: Props) {
               <span className="side-row-label">IVA 19%</span>
               <span className="side-row-value">{calc ? formatCLP(calc.tax_amount) : '—'}</span>
             </div>
+            </>
+            )}
           </div>
 
-          <div className="side-divider" />
+          {userRole !== 'operator' && <div className="side-divider" />}
 
+          {userRole !== 'operator' && (
           <div className="side-total-row">
             <span className="side-total-label">Total</span>
             <span className={`side-total-amount ${totalChanged ? 'pulse' : ''}`} key={calc?.total_amount}>
               {calc ? formatCLP(calc.total_amount) : '$0'}
             </span>
           </div>
+          )}
 
           <div className="side-actions">
-            <button className="btn-submit side-btn" onClick={handleSubmit} disabled={!quantity || Number(quantity) < 0.1 || !!priceError || submitting}>
+            <button className="btn-submit side-btn" onClick={handleSubmit} disabled={!quantity || Number(quantity) < 0.1 || (userRole !== 'operator' && !!priceError) || submitting}>
               {submitting ? 'Creando...' : 'Crear Orden'}
             </button>
+            {userRole !== 'operator' && (
             <button className="btn-cotizacion side-btn" onClick={handleCotizacion} disabled={!calc || !!priceError || generatingPdf}>
               {generatingPdf ? 'Generando...' : 'Cotización PDF'}
             </button>
+            )}
           </div>
         </div>
 
@@ -713,10 +706,12 @@ export default function NewOrder({ onNavigate }: Props) {
         <span className={`st-amount ${totalChanged ? 'pulse' : ''}`} key={calc ? `m${calc.total_amount}` : 'mz'}>
           {calc ? formatCLP(calc.total_amount) : '$0'}
         </span>
+        {userRole !== 'operator' && (
         <button className="btn-cotizacion" onClick={handleCotizacion} disabled={!calc || !!priceError || generatingPdf}>
           {generatingPdf ? '...' : 'PDF'}
         </button>
-        <button className="btn-submit" onClick={handleSubmit} disabled={!quantity || Number(quantity) < 0.1 || !!priceError || submitting}>
+        )}
+        <button className="btn-submit" onClick={handleSubmit} disabled={!quantity || Number(quantity) < 0.1 || (userRole !== 'operator' && !!priceError) || submitting}>
           {submitting ? '...' : 'Crear'}
         </button>
       </div>

@@ -6,6 +6,9 @@ import NewOrder from './components/NewOrder';
 import OrderList from './components/OrderList';
 import Prices from './components/Prices';
 import Facturacion from './components/Facturacion';
+import Login from './components/Login';
+import { getAuthToken, clearAuthToken, apiGetMe } from './data/api';
+import type { AuthUser } from './data/api';
 
 type View = 'dashboard' | 'clients' | 'new-order' | 'orders' | 'prices' | 'facturacion';
 
@@ -27,6 +30,8 @@ const icons: Record<string, React.ReactNode> = {
 };
 
 function App() {
+  const [authed, setAuthed] = useState<boolean | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [view, setView] = useState<View>(() => {
     const saved = localStorage.getItem('publibor-view') as View | null;
     return saved && ['dashboard', 'clients', 'new-order', 'orders', 'prices', 'facturacion'].includes(saved) ? saved : 'dashboard';
@@ -56,6 +61,34 @@ function App() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  // Auth check on mount
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) { setAuthed(false); return; }
+    apiGetMe()
+      .then((u) => { setUser(u); setAuthed(true); })
+      .catch(() => { clearAuthToken(); setAuthed(false); });
+  }, []);
+
+  function handleLogin() {
+    apiGetMe()
+      .then((u) => {
+        setUser(u);
+        setAuthed(true);
+        if (u.role === 'operator') {
+          setView('orders');
+          localStorage.setItem('publibor-view', 'orders');
+        }
+      })
+      .catch(() => setAuthed(true));
+  }
+
+  function handleLogout() {
+    clearAuthToken();
+    setUser(null);
+    setAuthed(false);
+  }
+
   const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
   function navigate(v: View) {
@@ -64,16 +97,23 @@ function App() {
     setMobileOpen(false);
   }
 
-  const mainNav: { key: View; label: string }[] = [
-    { key: 'dashboard', label: 'Dashboard' },
-    { key: 'orders', label: 'Órdenes' },
-    { key: 'clients', label: 'Clientes' },
-    { key: 'facturacion', label: 'Facturación' },
-  ];
+  const isOperator = user?.role === 'operator';
 
-  const configNav: { key: View; label: string }[] = [
-    { key: 'prices', label: 'Precios' },
-  ];
+  const mainNav: { key: View; label: string }[] = isOperator
+    ? [
+        { key: 'orders', label: 'Órdenes' },
+        { key: 'new-order', label: 'Nueva Orden' },
+      ]
+    : [
+        { key: 'dashboard', label: 'Dashboard' },
+        { key: 'orders', label: 'Órdenes' },
+        { key: 'clients', label: 'Clientes' },
+        { key: 'facturacion', label: 'Facturación' },
+      ];
+
+  const configNav: { key: View; label: string }[] = isOperator
+    ? []
+    : [{ key: 'prices', label: 'Precios' }];
 
   const viewTitles: Record<View, string> = {
     dashboard: 'Dashboard',
@@ -92,6 +132,23 @@ function App() {
     prices: 'Precios por defecto',
     facturacion: 'Documentos tributarios electrónicos',
   };
+
+  // Auth gate: loading
+  if (authed === null) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg)' }}>
+        <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+          <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#000' }}>P</span>
+        </div>
+        <span style={{ fontSize: '1.3rem', fontWeight: 800, letterSpacing: '0.12em', color: 'var(--color-text)' }}>PUBLIBOR</span>
+      </div>
+    );
+  }
+
+  // Auth gate: not logged in
+  if (!authed) {
+    return <Login onLogin={handleLogin} />;
+  }
 
   return (
     <>
@@ -152,25 +209,27 @@ function App() {
             </ul>
           </div>
 
-          <div className="nav-section">
-            {!collapsed && <span className="nav-section-label">Configuración</span>}
-            <ul>
-              {configNav.map((item) => (
-                <li key={item.key}>
-                  <a
-                    href="#"
-                    className={view === item.key ? 'active' : ''}
-                    onClick={(e) => { e.preventDefault(); navigate(item.key); }}
-                    title={item.label}
-                  >
-                    <span className="nav-icon">{icons[item.key]}</span>
-                    {!collapsed && <span className="nav-label">{item.label}</span>}
-                    {view === item.key && <span className="nav-indicator" />}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {configNav.length > 0 && (
+            <div className="nav-section">
+              {!collapsed && <span className="nav-section-label">Configuración</span>}
+              <ul>
+                {configNav.map((item) => (
+                  <li key={item.key}>
+                    <a
+                      href="#"
+                      className={view === item.key ? 'active' : ''}
+                      onClick={(e) => { e.preventDefault(); navigate(item.key); }}
+                      title={item.label}
+                    >
+                      <span className="nav-icon">{icons[item.key]}</span>
+                      {!collapsed && <span className="nav-label">{item.label}</span>}
+                      {view === item.key && <span className="nav-indicator" />}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </nav>
 
         <div className="sidebar-footer">
@@ -179,6 +238,12 @@ function App() {
               {theme === 'dark' ? icons.sun : icons.moon}
             </span>
             {!collapsed && <span className="theme-label">{theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}</span>}
+          </button>
+          <button className="theme-toggle logout-btn" onClick={handleLogout} title="Cerrar sesión">
+            <span className="theme-icon-wrap">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            </span>
+            {!collapsed && <span className="theme-label">Cerrar sesión</span>}
           </button>
         </div>
       </aside>
@@ -221,8 +286,8 @@ function App() {
             <button className="topbar-icon-btn" aria-label="Notificaciones" title="Notificaciones">
               {icons.bell}
             </button>
-            <div className="topbar-avatar" title="Mi cuenta">
-              <span className="avatar-initials">PB</span>
+            <div className="topbar-avatar" title={user?.username ?? 'Mi cuenta'}>
+              <span className="avatar-initials">{user ? user.username.slice(0, 2).toUpperCase() : 'PB'}</span>
             </div>
           </div>
         </header>
@@ -230,8 +295,8 @@ function App() {
         <div className="page-content">
           {view === 'dashboard' && <Dashboard onNavigate={(v) => navigate(v as View)} />}
           {view === 'clients' && <ClientList />}
-          {view === 'new-order' && <NewOrder onNavigate={(v) => navigate(v as View)} />}
-          {view === 'orders' && <OrderList onNavigate={(v) => navigate(v as View)} />}
+          {view === 'new-order' && <NewOrder onNavigate={(v) => navigate(v as View)} userRole={user?.role} />}
+          {view === 'orders' && <OrderList onNavigate={(v) => navigate(v as View)} userRole={user?.role} />}
           {view === 'prices' && <Prices />}
           {view === 'facturacion' && <Facturacion />}
         </div>

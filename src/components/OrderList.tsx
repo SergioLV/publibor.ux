@@ -34,7 +34,7 @@ interface EditingOrder {
   newPhotos: string[];
 }
 
-export default function OrderList({ onNavigate }: { onNavigate: (view: string) => void }) {
+export default function OrderList({ onNavigate, userRole }: { onNavigate: (view: string) => void; userRole?: string }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -527,9 +527,9 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
             <th>Servicio</th>
             <th>Descripción</th>
             <th>Cantidad</th>
-            <th>Precio Unit.</th>
-            <th>Total</th>
-            <th>Estado</th>
+            {userRole !== 'operator' && <th>Precio Unit.</th>}
+            {userRole !== 'operator' && <th>Total</th>}
+            {userRole !== 'operator' && <th>Estado</th>}
             <th></th>
           </tr>
         </thead>
@@ -559,15 +559,16 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
               </td>
               <td className="order-id-cell">
                 #{o.id}
-                {o.invoice_id && <span className="invoice-badge">Facturada</span>}
+                {userRole !== 'operator' && o.invoice_id && <span className="invoice-badge">Facturada</span>}
               </td>
               <td title={formatDate(o.created_at)}>{formatDateShort(o.created_at)}</td>
               <td>{clientMap[o.client_id]?.name || '—'}</td>
               <td><span className={`service-pill ${o.service.toLowerCase()}`}>{o.service}</span></td>
               <td className="desc-cell">{o.description || '—'}</td>
               <td>{o.meters} {unitLabel(o.service as ServiceType)}</td>
-              <td>{formatCLP(o.unit_price)}</td>
-              <td>{formatCLP(o.total_amount)}</td>
+              {userRole !== 'operator' && <td>{formatCLP(o.unit_price)}</td>}
+              {userRole !== 'operator' && <td>{formatCLP(o.total_amount)}</td>}
+              {userRole !== 'operator' && (
               <td onClick={(e) => e.stopPropagation()}>
                 <span
                   className={`status-badge ${o.is_paid ? 'paid' : 'unpaid'}`}
@@ -577,15 +578,18 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
                   {o.is_paid ? 'Pagada' : 'Pendiente'}
                 </span>
               </td>
+              )}
               <td className="actions-cell" onClick={(e) => e.stopPropagation()}>
                 {!o.is_paid && (
                   <button className="btn-action" onClick={() => openEdit(o)} title="Editar orden">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   </button>
                 )}
+                {userRole !== 'operator' && (
                 <a href={getCotizacionUrl(o.id)} target="_blank" rel="noopener noreferrer" className="btn-action" title="Descargar cotización">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                 </a>
+                )}
               </td>
             </tr>
           ))}
@@ -915,6 +919,7 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
                   </div>
 
                   {/* Price Section */}
+                  {userRole !== 'operator' && (
                   <div className="eom-section">
                     <div className="eom-section-header">
                       <span className="eom-section-label">
@@ -953,8 +958,10 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
                       </div>
                     </div>
                   </div>
+                  )}
 
                   {/* Purchase Orders Section */}
+                  {userRole !== 'operator' && (
                   <div className="eom-section">
                     <div className="eom-section-header">
                       <span className="eom-section-label">
@@ -1006,6 +1013,7 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
                       ))}
                     </div>
                   </div>
+                  )}
 
                   {/* Photos Section */}
                   <div className="eom-section">
@@ -1085,18 +1093,20 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
                         <span>{editing.bultos}</span>
                       </div>
                     )}
+                    {userRole !== 'operator' && (
                     <div className="eom-sidebar-row">
                       <span>Precio unit.</span>
                       <span>{editFinalPrice ? formatCLP(editFinalPrice) : '—'}</span>
                     </div>
+                    )}
                     {editing.purchase_orders.filter(po => po.oc_number.trim()).length > 0 && (
                       <div className="eom-sidebar-row">
                         <span>OC</span>
                         <span>{editing.purchase_orders.filter(po => po.oc_number.trim()).length}</span>
                       </div>
                     )}
-                    <div className="eom-sidebar-divider" />
-                    {editCalc ? (
+                    {userRole !== 'operator' && <div className="eom-sidebar-divider" />}
+                    {userRole !== 'operator' && editCalc ? (
                       <>
                         <div className="eom-sidebar-row">
                           <span>Subtotal</span>
@@ -1111,14 +1121,15 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
                           <span>{formatCLP(editCalc.total_amount)}</span>
                         </div>
                       </>
-                    ) : (
+                    ) : userRole !== 'operator' ? (
                       <div className="eom-sidebar-row">
                         <span>Total</span>
                         <span>—</span>
                       </div>
-                    )}
+                    ) : null}
                   </div>
 
+                  {userRole !== 'operator' && (
                   <div className="eom-sidebar-card eom-sidebar-quick">
                     <div className="eom-sidebar-card-title">Acciones rápidas</div>
                     <button
@@ -1170,6 +1181,7 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
                       </button>
                     )}
                   </div>
+                  )}
 
                   <div className="eom-sidebar-actions">
                     <button className="eom-btn-save" onClick={handleSaveEdit} disabled={saving || !editCalc}>
@@ -1184,12 +1196,14 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
             {/* Mobile sticky bottom bar */}
             <div className="eom-mobile-bar">
               <div className="eom-mobile-summary">
+                {userRole !== 'operator' && (
                 <div className="eom-mobile-summary-left">
                   <span className="eom-mobile-summary-label">Total</span>
                   <span className="eom-mobile-summary-total">{editCalc ? formatCLP(editCalc.total_amount) : '—'}</span>
                 </div>
+                )}
                 <span className="eom-mobile-summary-detail">
-                  {editing.meters || '0'} {unitLabel(editing.service)} · {editFinalPrice ? formatCLP(editFinalPrice) : '—'}/{unitLabel(editing.service)}
+                  {editing.meters || '0'} {unitLabel(editing.service)}{userRole !== 'operator' ? ` · ${editFinalPrice ? formatCLP(editFinalPrice) : '—'}/${unitLabel(editing.service)}` : ''}
                 </span>
               </div>
               <div className="eom-mobile-actions">

@@ -5,11 +5,19 @@ const API_BASE = 'https://s8agiab37c.execute-api.us-east-1.amazonaws.com/prod/ap
 // --- Generic fetch helper ---
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = localStorage.getItem('publibor-token');
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
+    headers: { ...headers, ...init?.headers },
   });
   if (!res.ok) {
+    if (res.status === 401 && !path.startsWith('/auth/')) {
+      localStorage.removeItem('publibor-token');
+      localStorage.removeItem('publibor-token-expires');
+      window.location.reload();
+    }
     const body = await res.text().catch(() => '');
     throw new Error(`API ${res.status}: ${body || res.statusText}`);
   }
@@ -549,4 +557,50 @@ export async function apiGetInvoicePdf(id: number): Promise<string> {
   }
   const blob = new Blob([byteArray], { type: res.type || 'application/pdf' });
   return URL.createObjectURL(blob);
+}
+
+// --- Auth API ---
+
+export function getAuthToken(): string | null {
+  const token = localStorage.getItem('publibor-token');
+  const expires = localStorage.getItem('publibor-token-expires');
+  if (!token || !expires) return null;
+  if (new Date(expires) <= new Date()) {
+    localStorage.removeItem('publibor-token');
+    localStorage.removeItem('publibor-token-expires');
+    return null;
+  }
+  return token;
+}
+
+export function setAuthToken(token: string, expiresAt: string): void {
+  localStorage.setItem('publibor-token', token);
+  localStorage.setItem('publibor-token-expires', expiresAt);
+}
+
+export function clearAuthToken(): void {
+  localStorage.removeItem('publibor-token');
+  localStorage.removeItem('publibor-token-expires');
+}
+
+export interface AuthUser {
+  id: number;
+  username: string;
+  role: string;
+}
+
+export async function apiLogin(username: string, password: string): Promise<{ token: string; expires_at: string }> {
+  const res = await apiFetch<{ data: { token: string; expires_at: string } }>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  });
+  return res.data;
+}
+
+export async function apiGetMe(): Promise<AuthUser> {
+  const token = getAuthToken();
+  const res = await apiFetch<{ data: AuthUser }>('/auth/me', {
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  return res.data;
 }

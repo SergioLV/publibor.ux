@@ -330,6 +330,17 @@
   padding: 8px;
 }
 
+.logout-btn {
+  margin-top: 6px;
+  color: var(--color-error, #ef4444);
+  border-color: transparent;
+}
+.logout-btn:hover {
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--color-error, #ef4444);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
 /* ═══════════════════════════════════════
    TOPBAR — Premium SaaS header
    ═══════════════════════════════════════ */
