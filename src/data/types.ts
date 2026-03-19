@@ -104,7 +104,7 @@ export function serviceLabel(service: ServiceType): string {
 
 // --- Invoice / DTE types (real API) ---
 
-export type InvoiceStatus = 'pending' | 'emitted' | 'failed';
+export type InvoiceStatus = 'pending' | 'emitted' | 'failed' | 'error';
 
 export interface Invoice {
   id: number;

@@ -240,8 +240,8 @@
 [data-theme="dark"] .fi-row:nth-child(even) td,
 :root:not([data-theme="light"]) .fi-row:nth-child(even) td { background: rgba(255,255,255,0.01); }
 
-.fi-row-failed td { opacity: 0.45; }
-.fi-row-failed:hover td { opacity: 0.7; }
+.fi-row-failed td, .fi-row-error td { opacity: 0.45; }
+.fi-row-failed:hover td, .fi-row-error:hover td { opacity: 0.7; }
 
 /* Cell styles */
 .fi-cell-folio {
@@ -294,7 +294,7 @@
 }
 .fi-status-emitted { background: var(--color-success-bg); color: var(--color-success); }
 .fi-status-pending { background: var(--color-warning-bg); color: var(--color-warning); }
-.fi-status-failed { background: var(--color-error-bg); color: var(--color-error); }
+.fi-status-failed, .fi-status-error { background: var(--color-error-bg); color: var(--color-error); }
 
 /* View button */
 .fi-view-btn {

@@ -8,6 +8,7 @@ const STATUS_LABELS: Record<InvoiceStatus, string> = {
   pending: 'Pendiente',
   emitted: 'Emitida',
   failed: 'Error',
+  error: 'Error',
 };
 
 export default function Facturacion() {
@@ -46,13 +47,17 @@ export default function Facturacion() {
   }, [clients]);
 
   const filtered = useMemo(() => {
-    return invoices.filter((inv) => !filterStatus || inv.status === filterStatus);
+    return invoices.filter((inv) => {
+      if (!filterStatus) return true;
+      if (filterStatus === 'failed') return inv.status === 'failed' || inv.status === 'error';
+      return inv.status === filterStatus;
+    });
   }, [invoices, filterStatus]);
 
   const totals = useMemo(() => {
     const emitted = invoices.filter((i) => i.status === 'emitted');
     const pending = invoices.filter((i) => i.status === 'pending');
-    const failed = invoices.filter((i) => i.status === 'failed');
+    const failed = invoices.filter((i) => i.status === 'failed' || i.status === 'error');
     return {
       emitted: emitted.length,
       emittedTotal: emitted.reduce((s, i) => s + i.monto_total, 0),
@@ -207,7 +212,7 @@ export default function Facturacion() {
                 </tr>
               ))}
               {!loading && filtered.map((inv) => (
-                <tr key={inv.id} className={`fi-row ${inv.status === 'failed' ? 'fi-row-failed' : ''}`} onClick={() => setDetailInvoice(inv)}>
+                <tr key={inv.id} className={`fi-row ${inv.status === 'failed' || inv.status === 'error' ? 'fi-row-failed' : ''}`} onClick={() => setDetailInvoice(inv)}>
                   <td className="fi-cell-folio">{inv.folio ? `#${inv.folio}` : '—'}</td>
                   <td><span className="fi-dte-badge">FE {inv.tipo_dte}</span></td>
                   <td className="fi-cell-date">{formatFecha(inv.fecha_emision)}</td>
@@ -230,7 +235,7 @@ export default function Facturacion() {
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                       </button>
                     )}
-                    {inv.status === 'failed' && (
+                    {(inv.status === 'failed' || inv.status === 'error') && (
                       <button
                         className="fi-retry-btn"
                         onClick={(e) => handleResend(inv.id, e)}
@@ -264,7 +269,7 @@ export default function Facturacion() {
           </div>
         ))}
         {!loading && filtered.map((inv) => (
-          <div key={inv.id} className={`fi-mcard ${inv.status === 'failed' ? 'fi-mcard-failed' : ''}`} onClick={() => setDetailInvoice(inv)}>
+          <div key={inv.id} className={`fi-mcard ${inv.status === 'failed' || inv.status === 'error' ? 'fi-mcard-failed' : ''}`} onClick={() => setDetailInvoice(inv)}>
             <div className="fi-mcard-top">
               <span className="fi-mcard-folio">{inv.folio ? `#${inv.folio}` : 'Sin folio'}</span>
               <span className="fi-dte-badge">FE {inv.tipo_dte}</span>
@@ -285,7 +290,7 @@ export default function Facturacion() {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                   </button>
                 )}
-                {inv.status === 'failed' && (
+                {(inv.status === 'failed' || inv.status === 'error') && (
                   <button className="fi-retry-btn" onClick={(e) => handleResend(inv.id, e)} disabled={resendingId === inv.id} title="Reintentar">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={resendingId === inv.id ? 'fi-spin' : ''}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                   </button>
@@ -361,7 +366,7 @@ export default function Facturacion() {
                   {loadingPdfId === detailInvoice.id ? 'Cargando PDF...' : 'Ver PDF'}
                 </button>
               )}
-              {detailInvoice.status === 'failed' && (
+              {(detailInvoice.status === 'failed' || detailInvoice.status === 'error') && (
                 <button
                   className="fi-resend-btn"
                   onClick={() => handleResend(detailInvoice.id)}
