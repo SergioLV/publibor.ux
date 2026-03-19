@@ -367,7 +367,7 @@ export default function NewOrder({ onNavigate, userRole }: Props) {
               <div className="service-grid service-grid-2">
                 <button
                   className="service-option so-quick"
-                  onClick={() => { setService('POR_CONFIRMAR' as ServiceType); setQuantity(''); setPriceOverride(''); }}
+                  onClick={() => { setService('POR_CONFIRMAR' as ServiceType); setPriceOverride(''); }}
                 >
                   <span className="so-icon">📦</span>
                   <span className="so-name">Por confirmar</span>
@@ -392,7 +392,7 @@ export default function NewOrder({ onNavigate, userRole }: Props) {
                     <button
                       key={s}
                       className={`service-option ${service === s ? 'selected' : ''}`}
-                      onClick={() => { setService(s); setQuantity(''); setPriceOverride(''); }}
+                      onClick={() => { setService(s); setPriceOverride(''); }}
                     >
                       <span className="so-icon">{SERVICE_ICONS[s] ?? '📋'}</span>
                       <span className="so-name">{s.replace('_', ' ')}</span>
@@ -404,7 +404,7 @@ export default function NewOrder({ onNavigate, userRole }: Props) {
             )}
           </div>
         ) : service ? (
-          <div className="no-card card-collapsed" onClick={() => { setService(''); setQuantity(''); setPriceOverride(''); setShowMoreServices(false); }}>
+          <div className="no-card card-collapsed" onClick={() => { setService(''); setPriceOverride(''); setShowMoreServices(false); }}>
             <div className="collapsed-row">
               <span className="no-card-num">✓</span>
               <span className="collapsed-label">Servicio</span>
@@ -412,7 +412,7 @@ export default function NewOrder({ onNavigate, userRole }: Props) {
                 <span className="collapsed-service-icon">{SERVICE_ICONS[service] ?? '📋'}</span>
                 {service === 'POR_CONFIRMAR' ? 'Por confirmar' : service}
               </span>
-              <button className="collapsed-change" onClick={(e) => { e.stopPropagation(); setService(''); setQuantity(''); setPriceOverride(''); setShowMoreServices(false); }}>Cambiar</button>
+              <button className="collapsed-change" onClick={(e) => { e.stopPropagation(); setService(''); setPriceOverride(''); setShowMoreServices(false); }}>Cambiar</button>
             </div>
           </div>
         ) : (

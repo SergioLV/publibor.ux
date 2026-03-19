@@ -86,6 +86,22 @@ export function unitLabel(service: ServiceType): string {
   return 'm';
 }
 
+// Helper: human-readable service label
+export function serviceLabel(service: ServiceType): string {
+  const labels: Record<ServiceType, string> = {
+    DTF: 'DTF',
+    SUBLIMACION: 'Sublimación',
+    UV: 'UV',
+    TEXTURIZADO: 'Texturizado',
+    LASER_CO2: 'Láser CO₂',
+    LASER_FIBRA: 'Láser Fibra',
+    BORDADOS: 'Bordados',
+    TEXTIL: 'Textil',
+    POR_CONFIRMAR: 'Por confirmar',
+  };
+  return labels[service] ?? service;
+}
+
 // --- Invoice / DTE types (real API) ---
 
 export type InvoiceStatus = 'pending' | 'emitted' | 'failed';

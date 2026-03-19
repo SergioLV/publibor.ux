@@ -195,6 +195,31 @@ input[type="checkbox"]:hover {
   color: #fbbf24;
   border: 1px solid rgba(251, 191, 36, 0.15);
 }
+.service-pill.laser_co2 {
+  background: rgba(16, 185, 129, 0.1);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.15);
+}
+.service-pill.laser_fibra {
+  background: rgba(20, 184, 166, 0.1);
+  color: #2dd4bf;
+  border: 1px solid rgba(20, 184, 166, 0.15);
+}
+.service-pill.bordados {
+  background: rgba(168, 85, 247, 0.1);
+  color: #a78bfa;
+  border: 1px solid rgba(168, 85, 247, 0.15);
+}
+.service-pill.textil {
+  background: rgba(251, 146, 60, 0.1);
+  color: #fb923c;
+  border: 1px solid rgba(251, 146, 60, 0.15);
+}
+.service-pill.por_confirmar {
+  background: rgba(161, 161, 170, 0.1);
+  color: #a1a1aa;
+  border: 1px solid rgba(161, 161, 170, 0.15);
+}
 
 /* Description column */
 .desc-cell {

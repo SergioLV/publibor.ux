@@ -3,7 +3,7 @@ import { fetchClients, fetchOrders, apiUpdateOrder, apiBulkMarkPaid, getCotizaci
 import type { PhotoPayload } from '../data/api';
 import { formatCLP, formatDate, formatDateShort } from '../data/format';
 import type { Order, Client, PriceTier, ServiceType, PurchaseOrder, OrderPhoto } from '../data/types';
-import { SERVICE_TYPES, unitLabel, isPerCloth } from '../data/types';
+import { SERVICE_TYPES, unitLabel, isPerCloth, serviceLabel } from '../data/types';
 import { getEffectivePrice, calculateOrder } from '../data/store';
 import './OrderList.css';
 
@@ -196,7 +196,8 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
   }
 
   async function handleSaveEdit() {
-    if (!editing || !editCalc) return;
+    if (!editing) return;
+    if (userRole !== 'operator' && !editCalc) return;
     setSaving(true);
     setError('');
     try {
@@ -494,6 +495,7 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
             {SERVICE_TYPES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </label>
+        {userRole !== 'operator' && (
         <label>Pago
           <select value={filterPayment} onChange={(e) => setFilterPayment(e.target.value as 'unpaid' | 'paid' | 'all')}>
             <option value="unpaid">No pagadas</option>
@@ -501,6 +503,7 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
             <option value="all">Todas</option>
           </select>
         </label>
+        )}
         <label>Desde
           <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} />
         </label>
@@ -563,7 +566,7 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
               </td>
               <td title={formatDate(o.created_at)}>{formatDateShort(o.created_at)}</td>
               <td>{clientMap[o.client_id]?.name || '—'}</td>
-              <td><span className={`service-pill ${o.service.toLowerCase()}`}>{o.service}</span></td>
+              <td><span className={`service-pill ${o.service.toLowerCase()}`}>{serviceLabel(o.service)}</span></td>
               <td className="desc-cell">{o.description || '—'}</td>
               <td>{o.meters} {unitLabel(o.service as ServiceType)}</td>
               {userRole !== 'operator' && <td>{formatCLP(o.unit_price)}</td>}
@@ -862,7 +865,7 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
                           <button
                             key={s}
                             className={`eom-service-btn ${editing.service === s ? 'selected' : ''}`}
-                            onClick={() => setEditing({ ...editing, service: s, meters: '', priceOverride: '' })}
+                            onClick={() => setEditing({ ...editing, service: s, priceOverride: '' })}
                           >
                             <span className="eom-service-icon">{SERVICE_ICONS[s] ?? '📋'}</span>
                             <span>{s.replace('_', ' ')}</span>
@@ -1184,7 +1187,7 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
                   )}
 
                   <div className="eom-sidebar-actions">
-                    <button className="eom-btn-save" onClick={handleSaveEdit} disabled={saving || !editCalc}>
+                    <button className="eom-btn-save" onClick={handleSaveEdit} disabled={saving || (userRole !== 'operator' && !editCalc)}>
                       {saving ? '⏳ Guardando...' : '💾 Guardar Cambios'}
                     </button>
                     <button className="eom-btn-cancel" onClick={closeEdit}>Cancelar</button>
@@ -1208,7 +1211,7 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
               </div>
               <div className="eom-mobile-actions">
                 <button className="eom-btn-cancel" onClick={closeEdit}>Cancelar</button>
-                <button className="eom-btn-save" onClick={handleSaveEdit} disabled={saving || !editCalc}>
+                <button className="eom-btn-save" onClick={handleSaveEdit} disabled={saving || (userRole !== 'operator' && !editCalc)}>
                   {saving ? '⏳ Guardando...' : '💾 Guardar'}
                 </button>
               </div>
