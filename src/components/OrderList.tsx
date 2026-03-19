@@ -62,7 +62,7 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
   const [facturando, setFacturando] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [fmaPago, setFmaPago] = useState<1 | 2>(1);
+  const [fmaPago, setFmaPago] = useState<1 | 2>(2);
   const [diasVencimiento, setDiasVencimiento] = useState(30);
 
   // Edit modal state
@@ -378,7 +378,7 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
     setPreviewUrl(null);
     setSelected(new Set());
     setSelectedOrders(new Map());
-    setFmaPago(1);
+    setFmaPago(2);
     setDiasVencimiento(30);
     setFeedback('sii');
     setTimeout(() => setFeedback(''), 5000);
