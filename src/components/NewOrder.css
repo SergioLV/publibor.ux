@@ -851,6 +851,11 @@
 .img-section {
   margin-top: 0.75rem;
 }
+.img-dropzone-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
 .img-dropzone {
   display: flex;
   flex-direction: column;

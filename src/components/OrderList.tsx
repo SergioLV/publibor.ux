@@ -1,12 +1,25 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { fetchClients, fetchOrders, apiUpdateOrder, apiBulkMarkPaid, getCotizacionUrl, openBulkCotizacion, downloadExcelExport, fetchDefaultPrices, fetchClientById, apiCreateInvoice, apiPreviewInvoice } from '../data/api';
+import type { PhotoPayload } from '../data/api';
 import { formatCLP, formatDate, formatDateShort } from '../data/format';
-import type { Order, Client, PriceTier, ServiceType, PurchaseOrder } from '../data/types';
+import type { Order, Client, PriceTier, ServiceType, PurchaseOrder, OrderPhoto } from '../data/types';
 import { SERVICE_TYPES, unitLabel, isPerCloth } from '../data/types';
 import { getEffectivePrice, calculateOrder } from '../data/store';
 import './OrderList.css';
 
 const PAGE_SIZES = [10, 25, 50, 100];
+
+const SERVICE_ICONS: Record<string, string> = {
+  DTF: '🖨️',
+  SUBLIMACION: '🎨',
+  UV: '💎',
+  TEXTURIZADO: '🧵',
+  LASER_CO2: '🔥',
+  LASER_FIBRA: '⚡',
+  BORDADOS: '🪡',
+  TEXTIL: '👕',
+  POR_CONFIRMAR: '📦',
+};
 
 interface EditingOrder {
   id: string;
@@ -16,6 +29,9 @@ interface EditingOrder {
   meters: string;
   priceOverride: string;
   purchase_orders: PurchaseOrder[];
+  bultos: string;
+  photos: OrderPhoto[];
+  newPhotos: string[];
 }
 
 export default function OrderList({ onNavigate }: { onNavigate: (view: string) => void }) {
@@ -55,6 +71,7 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
   const [loadingEditClient, setLoadingEditClient] = useState(false);
   const [tiers, setTiers] = useState<PriceTier[]>([]);
   const [saving, setSaving] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   useEffect(() => {
     fetchClients({ limit: 100 }).then((res) => setClients(res.clients)).catch(() => {});
@@ -119,6 +136,9 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
       meters: String(order.meters),
       priceOverride: '',
       purchase_orders: order.purchase_orders || [],
+      bultos: order.bultos ? String(order.bultos) : '',
+      photos: order.photos || [],
+      newPhotos: [],
     });
     setLoadingEditClient(true);
     try {
@@ -135,6 +155,7 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
     setEditing(null);
     setEditClient(null);
     setLoadingEditClient(false);
+    setLightboxSrc(null);
   }
 
   const editAutoPrice = useMemo(() => {
@@ -159,17 +180,40 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
     return calculateOrder(editFinalPrice, Number(editing.meters));
   }, [editFinalPrice, editing]);
 
+  function handleEditImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!editing) return;
+    const files = e.target.files;
+    if (!files) return;
+    Array.from(files).forEach((file) => {
+      if (!file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        setEditing((prev) => prev ? { ...prev, newPhotos: [...prev.newPhotos, reader.result as string] } : prev);
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  }
+
   async function handleSaveEdit() {
     if (!editing || !editCalc) return;
     setSaving(true);
     setError('');
     try {
+      const newPhotoPayloads: PhotoPayload[] = editing.newPhotos.map((dataUrl, i) => {
+        const match = dataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (!match) return { filename: `foto${i + 1}.jpg`, content_type: 'image/jpeg', data: dataUrl };
+        const ext = match[1].split('/')[1];
+        return { filename: `foto${i + 1}.${ext}`, content_type: match[1], data: match[2] };
+      });
       await apiUpdateOrder(editing.id, {
         service: editing.service,
         description: editing.description.trim() || undefined,
         meters: Number(editing.meters),
         unit_price: (editIsManualOnly || editIsManualOverride) ? Number(editing.priceOverride) : undefined,
         purchase_orders: editing.purchase_orders.filter(po => po.oc_number.trim()),
+        bultos: editing.bultos && Number(editing.bultos) > 0 ? Number(editing.bultos) : 0,
+        photos: newPhotoPayloads.length > 0 ? newPhotoPayloads : undefined,
       });
       setFeedback(`Orden #${editing.id} actualizada`);
       setTimeout(() => setFeedback(''), 3000);
@@ -505,8 +549,8 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
             </tr>
           ))}
           {!loading && orders.map((o) => (
-            <tr key={o.id} className={selected.has(o.id) ? 'row-selected' : ''}>
-              <td>
+            <tr key={o.id} className={`${selected.has(o.id) ? 'row-selected' : ''} ${!o.is_paid ? 'row-clickable' : ''}`} onClick={() => !o.is_paid && openEdit(o)}>
+              <td onClick={(e) => e.stopPropagation()}>
                 <input
                   type="checkbox"
                   checked={selected.has(o.id)}
@@ -524,7 +568,7 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
               <td>{o.meters} {unitLabel(o.service as ServiceType)}</td>
               <td>{formatCLP(o.unit_price)}</td>
               <td>{formatCLP(o.total_amount)}</td>
-              <td>
+              <td onClick={(e) => e.stopPropagation()}>
                 <span
                   className={`status-badge ${o.is_paid ? 'paid' : 'unpaid'}`}
                   onClick={() => handleTogglePaid(o)}
@@ -533,7 +577,7 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
                   {o.is_paid ? 'Pagada' : 'Pendiente'}
                 </span>
               </td>
-              <td className="actions-cell">
+              <td className="actions-cell" onClick={(e) => e.stopPropagation()}>
                 {!o.is_paid && (
                   <button className="btn-action" onClick={() => openEdit(o)} title="Editar orden">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -771,215 +815,379 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
         </div>
       )}
 
-      {/* Edit Order Modal */}
+      {/* Edit Order — Slide-over Panel */}
       {editing && (
-        <div className="modal-backdrop" onClick={closeEdit}>
-          <div className="edit-order-modal" onClick={(e) => e.stopPropagation()}>
+        <>
+          <div className="eom-backdrop" onClick={closeEdit} />
+          <div className="eom-panel">
             <div className="eom-header">
               <div className="eom-header-left">
-                <h3>Editar Orden #{editing.id}</h3>
-                <span className="eom-client-name">{clientMap[editing.client_id]?.name || '—'}</span>
+                <span className="eom-order-badge">#{editing.id}</span>
+                <h3>{clientMap[editing.client_id]?.name || '—'}</h3>
+                <span className="eom-client-tag">{SERVICE_ICONS[editing.service] ?? '📋'} {editing.service.replace('_', ' ')}</span>
               </div>
               <button className="eom-close" onClick={closeEdit}>✕</button>
             </div>
 
             {loadingEditClient ? (
-              <div className="eom-body">
-                <div className="eom-field">
-                  <label>Servicio</label>
-                  <div className="eom-service-grid">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div key={i} className="eom-sk-service" />
-                    ))}
-                  </div>
+              <div className="eom-content">
+                <div className="eom-form">
+                  <div className="eom-section"><div className="eom-section-body"><div className="eom-sk-block" style={{ height: 120 }} /></div></div>
+                  <div className="eom-section"><div className="eom-section-body"><div className="eom-sk-block" style={{ height: 80 }} /></div></div>
+                  <div className="eom-section"><div className="eom-section-body"><div className="eom-sk-block" style={{ height: 60 }} /></div></div>
                 </div>
-                <div className="eom-row">
-                  <div className="eom-field">
-                    <label>Cantidad</label>
-                    <div className="eom-sk-input" />
-                  </div>
-                  <div className="eom-field">
-                    <label>Descripción</label>
-                    <div className="eom-sk-input" />
-                  </div>
-                </div>
-                <div className="eom-sk-price-block" />
-                <div className="eom-sk-po-block">
-                  <div className="eom-sk-po-bar" />
-                  <div className="eom-sk-po-bar short" />
-                </div>
-                <div className="eom-sk-summary">
-                  <div className="eom-sk-summary-row" />
-                  <div className="eom-sk-summary-row" />
-                  <div className="eom-sk-summary-row wide" />
+                <div className="eom-sidebar">
+                  <div className="eom-sk-block" style={{ height: 160 }} />
                 </div>
               </div>
             ) : (
-            <div className="eom-body">
-              <div className="eom-field">
-                <label>Servicio</label>
-                <div className="eom-service-grid">
-                  {availableServices.map((s) => (
-                    <button
-                      key={s}
-                      className={`eom-service-btn ${editing.service === s ? 'selected' : ''}`}
-                      onClick={() => setEditing({ ...editing, service: s, meters: '', priceOverride: '' })}
-                    >
-                      <span>{s}</span>
-                      <span className="eom-service-unit">por {unitLabel(s)}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <div className="eom-content">
+                {/* Left: Form */}
+                <div className="eom-form">
+                  {/* Service Section */}
+                  <div className="eom-section">
+                    <div className="eom-section-header">
+                      <span className="eom-section-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+                        Servicio
+                      </span>
+                    </div>
+                    <div className="eom-section-body">
+                      <div className="eom-service-grid">
+                        {availableServices.map((s) => (
+                          <button
+                            key={s}
+                            className={`eom-service-btn ${editing.service === s ? 'selected' : ''}`}
+                            onClick={() => setEditing({ ...editing, service: s, meters: '', priceOverride: '' })}
+                          >
+                            <span className="eom-service-icon">{SERVICE_ICONS[s] ?? '📋'}</span>
+                            <span>{s.replace('_', ' ')}</span>
+                            <span className="eom-service-unit">por {unitLabel(s)}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
 
-              <div className="eom-row">
-                <div className="eom-field">
-                  <label>{isPerCloth(editing.service) ? (editing.service === 'TEXTURIZADO' ? 'Cantidad de paños' : 'Cantidad (unidades)') : 'Cantidad (metros)'}</label>
-                  <input
-                    type="number"
-                    min={isPerCloth(editing.service) ? '1' : '0.1'}
-                    step={isPerCloth(editing.service) ? '1' : '0.1'}
-                    value={editing.meters}
-                    onChange={(e) => setEditing({ ...editing, meters: e.target.value, priceOverride: '' })}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="eom-field">
-                  <label>Descripción</label>
-                  <input
-                    type="text"
-                    value={editing.description}
-                    onChange={(e) => setEditing({ ...editing, description: e.target.value })}
-                    placeholder="Opcional"
-                  />
-                </div>
-              </div>
+                  {/* Details Section */}
+                  <div className="eom-section">
+                    <div className="eom-section-header">
+                      <span className="eom-section-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Detalles
+                      </span>
+                    </div>
+                    <div className="eom-section-body">
+                      <div className="eom-details-grid three-col">
+                        <div className="eom-field">
+                          <label>{isPerCloth(editing.service) ? (editing.service === 'TEXTURIZADO' ? 'Paños' : 'Unidades') : 'Metros'}</label>
+                          <input
+                            type="number"
+                            min={isPerCloth(editing.service) ? '1' : '0.1'}
+                            step={isPerCloth(editing.service) ? '1' : '0.1'}
+                            value={editing.meters}
+                            onChange={(e) => setEditing({ ...editing, meters: e.target.value, priceOverride: '' })}
+                            placeholder="0"
+                          />
+                        </div>
+                        <div className="eom-field">
+                          <label>Bultos</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={editing.bultos}
+                            onChange={(e) => setEditing({ ...editing, bultos: e.target.value })}
+                            placeholder="0"
+                          />
+                        </div>
+                        <div className="eom-field">
+                          <label>Descripción</label>
+                          <input
+                            type="text"
+                            value={editing.description}
+                            onChange={(e) => setEditing({ ...editing, description: e.target.value })}
+                            placeholder="Opcional"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
-              {editIsManualOnly && (
-                <div className="eom-price-info">
-                  <div className="eom-price-override">
-                    <label>Precio unitario (CLP/{unitLabel(editing.service)}) *</label>
-                    <div className="eom-price-input-wrap">
-                      <span className="eom-price-prefix">$</span>
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={editing.priceOverride}
-                        onChange={(e) => setEditing({ ...editing, priceOverride: e.target.value })}
-                        placeholder="Ingrese precio"
-                      />
+                  {/* Price Section */}
+                  <div className="eom-section">
+                    <div className="eom-section-header">
+                      <span className="eom-section-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        Precio
+                      </span>
+                      {editIsManualOverride && <span className="eom-override-badge">Override</span>}
+                    </div>
+                    <div className="eom-section-body">
+                      {!editIsManualOnly && editAutoPrice && (
+                        <div className="eom-price-suggested">
+                          <span>Sugerido: {formatCLP(editAutoPrice.price)}/{unitLabel(editing.service)}</span>
+                          {editAutoPrice.isOverride && <span className="eom-override-badge">Especial</span>}
+                        </div>
+                      )}
+                      <div className="eom-price-card">
+                        <div className="eom-price-input-group">
+                          <span className="eom-price-prefix">$</span>
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={editing.priceOverride}
+                            onChange={(e) => setEditing({ ...editing, priceOverride: e.target.value })}
+                            placeholder={editAutoPrice ? String(editAutoPrice.price) : 'Ingrese precio'}
+                          />
+                          <span className="eom-price-suffix">/{unitLabel(editing.service)}</span>
+                        </div>
+                        {editIsManualOverride && (
+                          <div className="eom-price-actions">
+                            <button className="btn-sm" onClick={() => setEditing({ ...editing, priceOverride: '' })}>
+                              Usar sugerido
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Purchase Orders Section */}
+                  <div className="eom-section">
+                    <div className="eom-section-header">
+                      <span className="eom-section-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                        Órdenes de compra
+                      </span>
+                      <button
+                        type="button"
+                        className="eom-po-add"
+                        onClick={() => setEditing({ ...editing, purchase_orders: [...editing.purchase_orders, { oc_number: '', date: '' }] })}
+                      >
+                        + Agregar
+                      </button>
+                    </div>
+                    <div className="eom-section-body">
+                      {editing.purchase_orders.length === 0 && (
+                        <span className="eom-po-empty">Sin órdenes de compra asociadas</span>
+                      )}
+                      {editing.purchase_orders.map((po, idx) => (
+                        <div key={idx} className="eom-po-row">
+                          <input
+                            type="text"
+                            className="eom-po-input eom-po-number"
+                            value={po.oc_number}
+                            onChange={(e) => {
+                              const updated = [...editing.purchase_orders];
+                              updated[idx] = { ...updated[idx], oc_number: e.target.value };
+                              setEditing({ ...editing, purchase_orders: updated });
+                            }}
+                            placeholder="Nº orden de compra"
+                          />
+                          <input
+                            type="date"
+                            className="eom-po-input eom-po-date"
+                            value={po.date || ''}
+                            onChange={(e) => {
+                              const updated = [...editing.purchase_orders];
+                              updated[idx] = { ...updated[idx], date: e.target.value || undefined };
+                              setEditing({ ...editing, purchase_orders: updated });
+                            }}
+                          />
+                          <button
+                            type="button"
+                            className="eom-po-remove"
+                            onClick={() => setEditing({ ...editing, purchase_orders: editing.purchase_orders.filter((_, i) => i !== idx) })}
+                            title="Eliminar"
+                          >✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Photos Section */}
+                  <div className="eom-section">
+                    <div className="eom-section-header">
+                      <span className="eom-section-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        Fotos
+                      </span>
+                    </div>
+                    <div className="eom-section-body">
+                      {editing.photos.length > 0 && (
+                        <div className="eom-photo-grid">
+                          {editing.photos.map((photo) => (
+                            <div key={photo.id} className="eom-photo-thumb" onClick={() => setLightboxSrc(photo.url)}>
+                              <img src={photo.url} alt={photo.filename} />
+                              <button
+                                className="eom-photo-remove"
+                                onClick={(e) => { e.stopPropagation(); setEditing({ ...editing, photos: editing.photos.filter((p) => p.id !== photo.id) }); }}
+                                title="Eliminar"
+                              >✕</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {editing.newPhotos.length > 0 && (
+                        <div className="eom-photo-grid">
+                          {editing.newPhotos.map((src, idx) => (
+                            <div key={`new-${idx}`} className="eom-photo-thumb" onClick={() => setLightboxSrc(src)}>
+                              <img src={src} alt={`Nueva ${idx + 1}`} />
+                              <button
+                                className="eom-photo-remove"
+                                onClick={(e) => { e.stopPropagation(); setEditing({ ...editing, newPhotos: editing.newPhotos.filter((_, i) => i !== idx) }); }}
+                                title="Eliminar"
+                              >✕</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="eom-photo-upload-row">
+                        <label className="eom-photo-upload-btn">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                            <circle cx="12" cy="13" r="4"/>
+                          </svg>
+                          Tomar foto
+                          <input type="file" accept="image/*" capture="environment" onChange={handleEditImageUpload} hidden />
+                        </label>
+                        <label className="eom-photo-upload-btn">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                          </svg>
+                          Galería
+                          <input type="file" accept="image/*" multiple onChange={handleEditImageUpload} hidden />
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </div>
-              )}
 
-              {!editIsManualOnly && editAutoPrice && (
-                <div className="eom-price-info">
-                  <span className="eom-price-suggested">
-                    Precio sugerido: {formatCLP(editAutoPrice.price)}/{unitLabel(editing.service)}
-                    {editAutoPrice.isOverride && <span className="eom-override-badge">Especial</span>}
-                  </span>
-                  <div className="eom-price-override">
-                    <label>Precio unitario (CLP/{unitLabel(editing.service)})</label>
-                    <div className="eom-price-input-wrap">
-                      <span className="eom-price-prefix">$</span>
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={editing.priceOverride}
-                        onChange={(e) => setEditing({ ...editing, priceOverride: e.target.value })}
-                        placeholder={String(editAutoPrice.price)}
-                      />
+                {/* Right: Sidebar */}
+                <div className="eom-sidebar">
+                  <div className="eom-sidebar-card">
+                    <div className="eom-sidebar-card-title">Resumen</div>
+                    <div className="eom-sidebar-row">
+                      <span>Servicio</span>
+                      <span>{SERVICE_ICONS[editing.service] ?? '📋'} {editing.service.replace('_', ' ')}</span>
                     </div>
-                    {editIsManualOverride && (
-                      <button className="btn-sm" onClick={() => setEditing({ ...editing, priceOverride: '' })}>
-                        Usar sugerido
+                    <div className="eom-sidebar-row">
+                      <span>Cantidad</span>
+                      <span>{editing.meters || '—'} {unitLabel(editing.service)}</span>
+                    </div>
+                    {editing.bultos && Number(editing.bultos) > 0 && (
+                      <div className="eom-sidebar-row">
+                        <span>Bultos</span>
+                        <span>{editing.bultos}</span>
+                      </div>
+                    )}
+                    <div className="eom-sidebar-row">
+                      <span>Precio unit.</span>
+                      <span>{editFinalPrice ? formatCLP(editFinalPrice) : '—'}</span>
+                    </div>
+                    {editing.purchase_orders.filter(po => po.oc_number.trim()).length > 0 && (
+                      <div className="eom-sidebar-row">
+                        <span>OC</span>
+                        <span>{editing.purchase_orders.filter(po => po.oc_number.trim()).length}</span>
+                      </div>
+                    )}
+                    <div className="eom-sidebar-divider" />
+                    {editCalc ? (
+                      <>
+                        <div className="eom-sidebar-row">
+                          <span>Subtotal</span>
+                          <span>{formatCLP(editCalc.subtotal)}</span>
+                        </div>
+                        <div className="eom-sidebar-row">
+                          <span>IVA 19%</span>
+                          <span>{formatCLP(editCalc.tax_amount)}</span>
+                        </div>
+                        <div className="eom-sidebar-total">
+                          <span>Total</span>
+                          <span>{formatCLP(editCalc.total_amount)}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="eom-sidebar-row">
+                        <span>Total</span>
+                        <span>—</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="eom-sidebar-card eom-sidebar-quick">
+                    <div className="eom-sidebar-card-title">Acciones rápidas</div>
+                    <button
+                      className="eom-quick-btn"
+                      onClick={async () => {
+                        try { await downloadExcelExport([editing.id]); } catch { setError('Error exportando'); }
+                      }}
+                    >
+                      📥 Exportar resumen
+                    </button>
+                    <a href={getCotizacionUrl(editing.id)} target="_blank" rel="noopener noreferrer" className="eom-quick-btn">
+                      📄 Cotización PDF
+                    </a>
+                    {!orders.find(o => o.id === editing.id)?.is_paid && (
+                      <button
+                        className="eom-quick-btn eom-quick-paid"
+                        onClick={() => {
+                          const order = orders.find(o => o.id === editing.id);
+                          if (order) { closeEdit(); setSingleMarkPaidOrder(order); setShowMarkPaidConfirm(true); }
+                        }}
+                      >
+                        ✓ Marcar como pagada
+                      </button>
+                    )}
+                    {!orders.find(o => o.id === editing.id)?.invoice_id && (
+                      <button
+                        className="eom-quick-btn eom-quick-facturar"
+                        onClick={async () => {
+                          const order = orders.find(o => o.id === editing.id);
+                          if (!order) return;
+                          closeEdit();
+                          setSelected(new Set([order.id]));
+                          setSelectedOrders(new Map([[order.id, order]]));
+                          setPreviewLoading(true);
+                          setPreviewUrl(null);
+                          setShowFacturarPreview(true);
+                          try {
+                            const blobUrl = await apiPreviewInvoice([Number(order.id)]);
+                            setPreviewUrl(blobUrl);
+                          } catch (e) {
+                            setError(e instanceof Error ? e.message : 'Error obteniendo preview');
+                            setShowFacturarPreview(false);
+                          } finally {
+                            setPreviewLoading(false);
+                          }
+                        }}
+                      >
+                        🧾 Facturar
                       </button>
                     )}
                   </div>
-                </div>
-              )}
 
-              {/* Purchase Orders */}
-              <div className="eom-po-section">
-                <div className="eom-po-header">
-                  <span className="eom-po-title">Órdenes de compra</span>
-                  <button
-                    type="button"
-                    className="eom-po-add"
-                    onClick={() => setEditing({ ...editing, purchase_orders: [...editing.purchase_orders, { oc_number: '', date: '' }] })}
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-                    Agregar OC
-                  </button>
-                </div>
-                {editing.purchase_orders.length === 0 && (
-                  <span className="eom-po-empty">Sin órdenes de compra asociadas</span>
-                )}
-                {editing.purchase_orders.map((po, idx) => (
-                  <div key={idx} className="eom-po-row">
-                    <input
-                      type="text"
-                      className="eom-po-input eom-po-number"
-                      value={po.oc_number}
-                      onChange={(e) => {
-                        const updated = [...editing.purchase_orders];
-                        updated[idx] = { ...updated[idx], oc_number: e.target.value };
-                        setEditing({ ...editing, purchase_orders: updated });
-                      }}
-                      placeholder="Nº orden de compra"
-                    />
-                    <input
-                      type="date"
-                      className="eom-po-input eom-po-date"
-                      value={po.date || ''}
-                      onChange={(e) => {
-                        const updated = [...editing.purchase_orders];
-                        updated[idx] = { ...updated[idx], date: e.target.value || undefined };
-                        setEditing({ ...editing, purchase_orders: updated });
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="eom-po-remove"
-                      onClick={() => setEditing({ ...editing, purchase_orders: editing.purchase_orders.filter((_, i) => i !== idx) })}
-                      title="Eliminar"
-                    >
-                      ✕
+                  <div className="eom-sidebar-actions">
+                    <button className="eom-btn-save" onClick={handleSaveEdit} disabled={saving || !editCalc}>
+                      {saving ? '⏳ Guardando...' : '💾 Guardar Cambios'}
                     </button>
-                  </div>
-                ))}
-              </div>
-
-              {editCalc && (
-                <div className="eom-summary">
-                  <div className="eom-summary-row">
-                    <span>Subtotal</span>
-                    <span>{formatCLP(editCalc.subtotal)}</span>
-                  </div>
-                  <div className="eom-summary-row">
-                    <span>IVA 19%</span>
-                    <span>{formatCLP(editCalc.tax_amount)}</span>
-                  </div>
-                  <div className="eom-summary-row total">
-                    <span>Total</span>
-                    <span>{formatCLP(editCalc.total_amount)}</span>
+                    <button className="eom-btn-cancel" onClick={closeEdit}>Cancelar</button>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
             )}
-
-            <div className="eom-actions">
-              <button className="btn-ghost" onClick={closeEdit}>Cancelar</button>
-              <button className="btn-primary" onClick={handleSaveEdit} disabled={saving || !editCalc || loadingEditClient}>
-                {saving ? 'Guardando...' : 'Guardar Cambios'}
-              </button>
-            </div>
           </div>
-        </div>
+          {lightboxSrc && (
+            <div className="eom-lightbox" onClick={() => setLightboxSrc(null)}>
+              <button className="eom-lightbox-close" onClick={() => setLightboxSrc(null)}>✕</button>
+              <img src={lightboxSrc} alt="Vista ampliada" onClick={(e) => e.stopPropagation()} />
+            </div>
+          )}
+        </>
       )}
 
       <div className="order-footer">

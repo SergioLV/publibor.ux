@@ -44,6 +44,13 @@ export interface PurchaseOrder {
   date?: string;
 }
 
+export interface OrderPhoto {
+  id: number;
+  filename: string;
+  content_type: string;
+  url: string;
+}
+
 export interface Order {
   id: string;
   client_id: string;
@@ -60,6 +67,8 @@ export interface Order {
   created_at: string;
   invoice_id: number | null;
   purchase_orders?: PurchaseOrder[];
+  bultos?: number;
+  photos?: OrderPhoto[];
 }
 
 // Services priced per unit (not per meter)

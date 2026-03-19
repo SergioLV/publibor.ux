@@ -237,6 +237,8 @@ interface ApiOrder {
   created_at: string;
   invoice_id: number | null;
   purchase_orders?: { id?: number; oc_number: string; date?: string | null }[];
+  bultos?: number;
+  photos?: { id: number; filename: string; content_type: string; url: string }[];
 }
 
 function mapApiOrder(api: ApiOrder): Order {
@@ -259,6 +261,8 @@ function mapApiOrder(api: ApiOrder): Order {
       oc_number: po.oc_number,
       date: po.date ?? undefined,
     })),
+    bultos: api.bultos ?? undefined,
+    photos: api.photos ?? undefined,
   };
 }
 
@@ -341,6 +345,8 @@ export async function apiUpdateOrder(id: string, data: {
   unit_price?: number;
   is_paid?: boolean;
   purchase_orders?: PurchaseOrder[];
+  bultos?: number;
+  photos?: PhotoPayload[];
 }): Promise<Order> {
   const body: Record<string, unknown> = {};
   if (data.service !== undefined) body.service = data.service;
@@ -351,6 +357,8 @@ export async function apiUpdateOrder(id: string, data: {
   if (data.purchase_orders !== undefined) body.purchase_orders = data.purchase_orders.length > 0
     ? data.purchase_orders.map(po => ({ oc_number: po.oc_number, ...(po.date ? { date: po.date } : {}) }))
     : [];
+  if (data.bultos !== undefined) body.bultos = data.bultos;
+  if (data.photos !== undefined && data.photos.length > 0) body.photos = data.photos;
 
   const res = await apiFetch<{ data: ApiOrder }>(`/orders/${id}`, {
     method: 'PUT',

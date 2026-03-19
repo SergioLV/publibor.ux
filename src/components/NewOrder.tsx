@@ -130,17 +130,16 @@ export default function NewOrder({ onNavigate }: Props) {
     if (!service) { setError('Seleccione tipo de servicio'); return; }
     const minQty = isPerCloth(service as ServiceType) ? 1 : 0.1;
     if (!quantity || Number(quantity) < minQty) { setError(`Cantidad debe ser ≥ ${minQty}`); return; }
-    if (isManualOnly && (!priceOverride || Number(priceOverride) <= 0)) { setError('Ingrese precio unitario'); return; }
     if (priceError) { setError(priceError); return; }
-    if (!calc) return;
     setSubmitting(true);
     try {
+      const hasPrice = (isManualOnly || isManualOverride) && priceOverride && Number(priceOverride) > 0;
       await apiCreateOrder({
         client_id: Number(clientId),
         service: service as string,
         description: description.trim() || undefined,
         meters: Number(quantity),
-        unit_price: (isManualOnly || isManualOverride) ? Number(priceOverride) : undefined,
+        unit_price: hasPrice ? Number(priceOverride) : undefined,
         bultos: bultos && Number(bultos) > 0 ? Number(bultos) : undefined,
         purchase_orders: purchaseOrders.length > 0 ? purchaseOrders.map(po => ({
           oc_number: po.oc_number,
@@ -409,7 +408,7 @@ export default function NewOrder({ onNavigate }: Props) {
             {isManualOnly && (
               <div className="price-override-row" style={{ marginTop: '0.5rem' }}>
                 <label className="price-override-label">
-                  Precio unitario (CLP/{unitLabel(service as ServiceType)}) *
+                  Precio unitario (CLP/{unitLabel(service as ServiceType)})
                   <div className="price-override-input-wrap">
                     <span className="price-prefix">$</span>
                     <input
@@ -526,15 +525,27 @@ export default function NewOrder({ onNavigate }: Props) {
 
             {/* Images */}
             <div className="img-section">
-              <label className="img-dropzone">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                  <circle cx="12" cy="13" r="4"/>
-                </svg>
-                <span className="img-dropzone-text">Agregar imágenes</span>
-                <span className="img-dropzone-hint">Click para seleccionar</span>
-                <input type="file" accept="image/*" multiple onChange={handleImageUpload} hidden />
-              </label>
+              <div className="img-dropzone-row">
+                <label className="img-dropzone">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                  <span className="img-dropzone-text">Tomar foto</span>
+                  <span className="img-dropzone-hint">Abrir cámara</span>
+                  <input type="file" accept="image/*" capture="environment" onChange={handleImageUpload} hidden />
+                </label>
+                <label className="img-dropzone">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                  </svg>
+                  <span className="img-dropzone-text">Galería</span>
+                  <span className="img-dropzone-hint">Seleccionar imágenes</span>
+                  <input type="file" accept="image/*" multiple onChange={handleImageUpload} hidden />
+                </label>
+              </div>
               {images.length > 0 && (
                 <div className="img-grid">
                   {images.map((src, idx) => (
@@ -628,7 +639,7 @@ export default function NewOrder({ onNavigate }: Props) {
           </div>
 
           <div className="side-actions">
-            <button className="btn-submit side-btn" onClick={handleSubmit} disabled={!calc || !!priceError || submitting}>
+            <button className="btn-submit side-btn" onClick={handleSubmit} disabled={!quantity || Number(quantity) < 0.1 || !!priceError || submitting}>
               {submitting ? 'Creando...' : 'Crear Orden'}
             </button>
             <button className="btn-cotizacion side-btn" onClick={handleCotizacion} disabled={!calc || !!priceError || generatingPdf}>
@@ -663,7 +674,7 @@ export default function NewOrder({ onNavigate }: Props) {
         <button className="btn-cotizacion" onClick={handleCotizacion} disabled={!calc || !!priceError || generatingPdf}>
           {generatingPdf ? '...' : 'PDF'}
         </button>
-        <button className="btn-submit" onClick={handleSubmit} disabled={!calc || !!priceError || submitting}>
+        <button className="btn-submit" onClick={handleSubmit} disabled={!quantity || Number(quantity) < 0.1 || !!priceError || submitting}>
           {submitting ? '...' : 'Crear'}
         </button>
       </div>
