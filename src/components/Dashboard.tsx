@@ -128,29 +128,113 @@ export default function Dashboard({ onNavigate }: Props) {
   if (loading) {
     return (
       <div className="dashboard">
+        {/* KPI Cards skeleton */}
         <div className="stat-grid">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className={`stat-card stat-card-skeleton${i === 0 ? ' accent' : ''}`}>
-              <span className="skeleton-block skeleton-label" />
-              <span className="skeleton-block skeleton-value" />
-              {i === 0 && <span className="skeleton-block skeleton-sub" />}
+            <div key={i} className={`stat-card${i === 0 ? ' accent' : i === 1 ? ' success' : ''}`}>
+              <div className="stat-icon"><span className="skeleton-block" style={{ width: 24, height: 24, borderRadius: '50%' }} /></div>
+              <div className="stat-content">
+                <span className="skeleton-block" style={{ width: '55%', height: 11 }} />
+                <span className="skeleton-block" style={{ width: '70%', height: 30, marginTop: 2 }} />
+                <span className="skeleton-block" style={{ width: '60%', height: 12, marginTop: 2 }} />
+              </div>
             </div>
           ))}
         </div>
+
+        {/* Charts row skeleton */}
         <div className="dashboard-grid">
           {[0, 1].map((i) => (
-            <div key={i} className="dash-panel dash-panel-skeleton">
-              <div className="skeleton-block skeleton-heading" />
-              <div className="skeleton-block skeleton-chart" />
+            <div key={i} className="dash-panel">
+              <div className="panel-header">
+                <span className="skeleton-block" style={{ width: '40%', height: 12 }} />
+              </div>
+              <div className="chart-container">
+                <span className="skeleton-block" style={{ width: '100%', height: 220 }} />
+              </div>
             </div>
           ))}
+        </div>
+
+        {/* Bottom row skeleton */}
+        <div className="dashboard-grid-3">
+          {/* Service breakdown */}
+          <div className="dash-panel">
+            <div className="panel-header">
+              <span className="skeleton-block" style={{ width: '50%', height: 12 }} />
+            </div>
+            <div className="service-breakdown">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="sb-row">
+                  <div className="sb-top">
+                    <span className="skeleton-block sb-dot" />
+                    <span className="skeleton-block" style={{ width: '30%', height: 13 }} />
+                    <span className="skeleton-block" style={{ width: '20%', height: 12, marginLeft: 'auto' }} />
+                    <span className="skeleton-block" style={{ width: 70, height: 13, flexShrink: 0 }} />
+                  </div>
+                  <div className="sb-bar-track">
+                    <span className="skeleton-block" style={{ width: `${70 - i * 15}%`, height: 6, borderRadius: 3 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Top clients */}
+          <div className="dash-panel">
+            <div className="panel-header">
+              <span className="skeleton-block" style={{ width: '40%', height: 12 }} />
+            </div>
+            <div className="top-clients">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="tc-row">
+                  <span className="skeleton-block tc-rank" />
+                  <div className="tc-info">
+                    <span className="skeleton-block" style={{ width: '65%', height: 14 }} />
+                    <span className="skeleton-block" style={{ width: '40%', height: 11 }} />
+                  </div>
+                  <span className="skeleton-block" style={{ width: 70, height: 14, flexShrink: 0 }} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Recent activity */}
+          <div className="dash-panel">
+            <div className="panel-header">
+              <span className="skeleton-block" style={{ width: '45%', height: 12 }} />
+            </div>
+            <div className="activity-feed">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="af-row">
+                  <span className="skeleton-block af-dot" />
+                  <div className="af-content">
+                    <span className="skeleton-block" style={{ width: '75%', height: 13 }} />
+                    <span className="skeleton-block" style={{ width: '45%', height: 11 }} />
+                  </div>
+                  <div className="af-right">
+                    <span className="skeleton-block" style={{ width: 60, height: 13 }} />
+                    <span className="skeleton-block" style={{ width: 40, height: 10 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Quick actions skeleton */}
+        <div className="quick-actions">
+          <span className="skeleton-block" style={{ width: 130, height: 36, borderRadius: 6 }} />
+          <span className="skeleton-block" style={{ width: 110, height: 36, borderRadius: 6 }} />
+          <span className="skeleton-block" style={{ width: 110, height: 36, borderRadius: 6 }} />
+          <span className="skeleton-block" style={{ width: 110, height: 36, borderRadius: 6 }} />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="dashboard">
+    <div className="dashboard fade-in">
       {/* KPI Cards */}
       <div className="stat-grid">
         <div className="stat-card accent">
@@ -199,14 +283,14 @@ export default function Dashboard({ onNavigate }: Props) {
               <AreaChart data={stats.dailyData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#F5A623" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#F5A623" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
                 <Tooltip contentStyle={chartTooltipStyle} formatter={(value) => [formatCLP(Number(value)), 'Ingresos']} labelStyle={{ color: 'var(--color-text-muted)', fontSize: '0.72rem' }} />
-                <Area type="monotone" dataKey="total" stroke="#F5A623" strokeWidth={2.5} fill="url(#areaGrad)" dot={false} activeDot={{ r: 4, fill: '#F5A623', stroke: '#000', strokeWidth: 2 }} />
+                <Area type="monotone" dataKey="total" stroke="#6366f1" strokeWidth={2.5} fill="url(#areaGrad)" dot={false} activeDot={{ r: 4, fill: '#6366f1', stroke: '#000', strokeWidth: 2 }} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -311,7 +395,7 @@ export default function Dashboard({ onNavigate }: Props) {
         <button className="btn-primary" onClick={() => onNavigate('new-order')}>＋ Nueva Orden</button>
         <button className="btn-secondary" onClick={() => onNavigate('orders')}>Ver Órdenes</button>
         <button className="btn-secondary" onClick={() => onNavigate('clients')}>Ver Clientes</button>
-        <button className="btn-secondary" onClick={() => onNavigate('invoices')}>Ver Facturas</button>
+        <button className="btn-secondary" onClick={() => onNavigate('facturacion')}>Ver Facturas</button>
       </div>
     </div>
   );

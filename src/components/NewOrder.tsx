@@ -235,11 +235,68 @@ export default function NewOrder({ onNavigate, userRole }: Props) {
   if (success) {
     return (
       <div className="no-layout">
-        <div className="success-box">
-          <div className="success-icon">✓</div>
-          <h2>Orden creada</h2>
-          <p>La orden ha sido registrada exitosamente.</p>
-          <div className="success-actions">
+        <motion.div
+          className="success-box"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {/* Animated check circle */}
+          <div className="success-check-wrap">
+            <svg className="success-check" viewBox="0 0 52 52" fill="none">
+              <motion.circle
+                cx="26" cy="26" r="24"
+                stroke="var(--color-primary)"
+                strokeWidth="2.5"
+                fill="none"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
+              />
+              <motion.path
+                d="M15 27l7 7 15-15"
+                stroke="var(--color-primary)"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 0.35, delay: 0.4, ease: 'easeOut' }}
+              />
+            </svg>
+            {/* Burst particles */}
+            {[...Array(8)].map((_, i) => (
+              <motion.span
+                key={i}
+                className="success-particle"
+                style={{ '--angle': `${i * 45}deg` } as React.CSSProperties}
+                initial={{ opacity: 1, scale: 0 }}
+                animate={{ opacity: 0, scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.45, ease: 'easeOut' }}
+              />
+            ))}
+          </div>
+          <motion.h2
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55, duration: 0.3 }}
+          >
+            Orden creada
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.65, duration: 0.3 }}
+          >
+            La orden ha sido registrada exitosamente.
+          </motion.p>
+          <motion.div
+            className="success-actions"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.75, duration: 0.3 }}
+          >
             <button className="btn-primary" onClick={() => onNavigate('orders')}>Ver Órdenes</button>
             {selectedClient && (
               <button className="btn-primary" onClick={resetFormKeepClient}>
@@ -247,8 +304,8 @@ export default function NewOrder({ onNavigate, userRole }: Props) {
               </button>
             )}
             <button className="btn-ghost" onClick={resetForm}>Crear otra</button>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
     );
   }
@@ -282,23 +339,13 @@ export default function NewOrder({ onNavigate, userRole }: Props) {
       <div className="no-form">
         {error && <div className="error-msg">{error}</div>}
 
-        {/* Steps progress bar */}
+        {/* Steps — compact dot progress */}
         <div className="steps">
-          <div className="steps-track">
-            <div className="steps-fill" style={{ width: step === 1 ? '0%' : step === 2 ? '50%' : '100%' }} />
-          </div>
-          <div className={`step ${step >= 1 ? 'active' : ''} ${clientId ? 'done' : ''}`}>
-            <span className="step-num">{clientId ? '✓' : '1'}</span>
-            <span className="step-label">Cliente</span>
-          </div>
-          <div className={`step ${step >= 2 ? 'active' : ''} ${service ? 'done' : ''}`}>
-            <span className="step-num">{service ? '✓' : '2'}</span>
-            <span className="step-label">Servicio</span>
-          </div>
-          <div className={`step ${step >= 3 ? 'active' : ''} ${quantity && Number(quantity) >= 0.1 ? 'done' : ''}`}>
-            <span className="step-num">{quantity && Number(quantity) >= 0.1 ? '✓' : '3'}</span>
-            <span className="step-label">Cantidad</span>
-          </div>
+          <div className={`step-dot ${step === 1 ? 'active' : ''} ${clientId ? 'done' : ''}`} />
+          <div className={`step-connector ${clientId ? 'filled' : ''}`} />
+          <div className={`step-dot ${step === 2 ? 'active' : ''} ${service ? 'done' : ''}`} />
+          <div className={`step-connector ${service ? 'filled' : ''}`} />
+          <div className={`step-dot ${step === 3 ? 'active' : ''} ${quantity && Number(quantity) >= 0.1 ? 'done' : ''}`} />
         </div>
 
         {/* Step 1: Client */}
@@ -341,6 +388,17 @@ export default function NewOrder({ onNavigate, userRole }: Props) {
                 </div>
               )}
             </div>
+            {/* Frequent / recent clients chips */}
+            {!clientSearch && activeClients.length > 0 && (
+              <div className="freq-clients">
+                <span className="freq-label">Recientes</span>
+                {activeClients.slice(0, 6).map((c) => (
+                  <button key={c.id} className="freq-chip" onClick={() => selectClient(c.id, c.name)}>
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="no-card card-collapsed" onClick={clearClient}>
@@ -420,6 +478,7 @@ export default function NewOrder({ onNavigate, userRole }: Props) {
             <div className="collapsed-row">
               <span className="no-card-num">2</span>
               <span className="collapsed-label dim">Tipo de servicio</span>
+              <span className="pending-hint">Elige servicio</span>
             </div>
           </div>
         )}
@@ -590,6 +649,7 @@ export default function NewOrder({ onNavigate, userRole }: Props) {
             <div className="collapsed-row">
               <span className="no-card-num">3</span>
               <span className="collapsed-label dim">Cantidad</span>
+              <span className="pending-hint">Ingresa cantidad y detalles</span>
             </div>
           </div>
         )}

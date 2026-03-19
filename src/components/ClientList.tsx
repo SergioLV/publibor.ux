@@ -242,7 +242,7 @@ export default function ClientList() {
         </thead>
         <tbody>
           {loading && Array.from({ length: 6 }).map((_, i) => (
-            <tr key={`skel-${i}`} className="skeleton-row">
+            <tr key={`skel-${i}`} className="skeleton-row" style={{ animationDelay: `${i * 0.04}s` }}>
               <td>
                 <div className="cl-name-cell">
                   <span className="skeleton-cell cl-avatar-sk" />
@@ -256,8 +256,8 @@ export default function ClientList() {
               <td><span className="skeleton-cell tiny" /></td>
             </tr>
           ))}
-          {!loading && clients.map((c) => (
-            <tr key={c.id}>
+          {!loading && clients.map((c, idx) => (
+            <tr key={c.id} className="fade-in-row clickable-row" style={{ animationDelay: `${idx * 0.02}s` }} onClick={() => openEdit(c)}>
               <td>
                 <div className="cl-name-cell">
                   <span className="cl-avatar">{clientInitials(c.name)}</span>
@@ -298,14 +298,14 @@ export default function ClientList() {
       {/* Mobile client cards */}
       <div className="mobile-client-cards">
         {loading && Array.from({ length: 4 }).map((_, i) => (
-          <div key={`cskel-${i}`} className="mobile-client-card skeleton-card">
+          <div key={`cskel-${i}`} className="mobile-client-card skeleton-card" style={{ animationDelay: `${i * 0.05}s` }}>
             <div className="skeleton-cell wide" />
             <div className="skeleton-cell medium" />
             <div className="skeleton-cell short" />
           </div>
         ))}
-        {!loading && clients.map((c) => (
-          <div key={c.id} className="mobile-client-card" onClick={() => openEdit(c)}>
+        {!loading && clients.map((c, idx) => (
+          <div key={c.id} className="mobile-client-card fade-in-row" style={{ animationDelay: `${idx * 0.03}s` }} onClick={() => openEdit(c)}>
             <div className="mcc-top">
               <span className="cl-avatar">{clientInitials(c.name)}</span>
               <div className="mcc-info">
@@ -343,13 +343,23 @@ export default function ClientList() {
       </div>
 
       {editing && (
-        <div className="modal-overlay" onClick={() => { if (!loadingEdit) setEditing(null); }}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>{isNew ? 'Nuevo Cliente' : 'Editar Cliente'}</h3>
-              <button className="modal-close" onClick={() => setEditing(null)}>✕</button>
+        <>
+          <div className="cl-panel-backdrop" onClick={() => { if (!loadingEdit) setEditing(null); }} />
+          <div className="cl-panel">
+            <div className="cl-panel-header">
+              <div className="cl-panel-header-left">
+                {!isNew && <span className="cl-avatar">{clientInitials(editing.name || '?')}</span>}
+                <h3>{isNew ? 'Nuevo Cliente' : editing.name || 'Cliente'}</h3>
+                {!isNew && (
+                  <span className={`status-badge ${editing.is_active ? 'active' : 'inactive'}`}>
+                    {editing.is_active ? 'Activo' : 'Inactivo'}
+                  </span>
+                )}
+              </div>
+              <button className="cl-panel-close" onClick={() => setEditing(null)}>✕</button>
             </div>
 
+            <div className="cl-panel-body">
             {loadingEdit ? (
               <>
                 <div className="modal-section">
@@ -374,10 +384,6 @@ export default function ClientList() {
                       </div>
                     ))}
                   </div>
-                </div>
-                <div className="modal-actions">
-                  <span className="skeleton-btn" />
-                  <span className="skeleton-btn wide" />
                 </div>
               </>
             ) : (
@@ -480,17 +486,18 @@ export default function ClientList() {
                 })}
               </div>
             </div>
+              </>
+            )}
+            </div>
 
-            <div className="modal-actions">
-              <button onClick={() => setEditing(null)}>Cancelar</button>
+            <div className="cl-panel-footer">
+              <button className="cl-panel-cancel" onClick={() => setEditing(null)}>Cancelar</button>
               <button className="btn-primary" onClick={save} disabled={saving || !editing.name.trim()}>
                 {saving ? 'Guardando...' : isNew ? 'Crear Cliente' : 'Guardar Cambios'}
               </button>
             </div>
-              </>
-            )}
           </div>
-        </div>
+        </>
       )}
     </div>
   );

@@ -566,8 +566,8 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
           </tr>
         </thead>
         <tbody>
-          {loading && Array.from({ length: 5 }).map((_, i) => (
-            <tr key={`skel-${i}`} className="skeleton-row">
+          {loading && Array.from({ length: 8 }).map((_, i) => (
+            <tr key={`skel-${i}`} className="skeleton-row" style={{ animationDelay: `${i * 0.04}s` }}>
               <td><span className="skeleton-cell tiny" /></td>
               <td><span className="skeleton-cell tiny" /></td>
               <td><span className="skeleton-cell medium" /></td>
@@ -580,8 +580,8 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
               <td><span className="skeleton-cell tiny" /></td>
             </tr>
           ))}
-          {!loading && orders.map((o) => (
-            <tr key={o.id} className={`${selected.has(o.id) ? 'row-selected' : ''} ${!o.is_paid ? 'row-clickable' : ''}`} onClick={() => !o.is_paid && openEdit(o)}>
+          {!loading && orders.map((o, idx) => (
+            <tr key={o.id} className={`fade-in-row ${selected.has(o.id) ? 'row-selected' : ''} ${!o.is_paid ? 'row-clickable' : ''}`} style={{ animationDelay: `${idx * 0.02}s` }} onClick={() => !o.is_paid && openEdit(o)}>
               <td onClick={(e) => e.stopPropagation()}>
                 <input
                   type="checkbox"
@@ -639,17 +639,18 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
 
       {/* Mobile card list */}
       <div className="mobile-order-cards">
-        {loading && Array.from({ length: 3 }).map((_, i) => (
-          <div key={`mskel-${i}`} className="mobile-order-card skeleton-card">
+        {loading && Array.from({ length: 4 }).map((_, i) => (
+          <div key={`mskel-${i}`} className="mobile-order-card skeleton-card" style={{ animationDelay: `${i * 0.05}s` }}>
             <div className="skeleton-cell wide" />
             <div className="skeleton-cell medium" />
             <div className="skeleton-cell short" />
           </div>
         ))}
-        {!loading && orders.map((o) => (
+        {!loading && orders.map((o, idx) => (
           <div
             key={o.id}
-            className={`mobile-order-card ${selected.has(o.id) ? 'card-selected' : ''} ${!o.is_paid ? 'card-clickable' : ''}`}
+            className={`mobile-order-card fade-in-row ${selected.has(o.id) ? 'card-selected' : ''} ${!o.is_paid ? 'card-clickable' : ''}`}
+            style={{ animationDelay: `${idx * 0.03}s` }}
             onClick={() => !o.is_paid && openEdit(o)}
           >
             <div className="moc-top">

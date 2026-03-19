@@ -43,6 +43,7 @@ function App() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -168,7 +169,13 @@ function App() {
               <span className="brand-desc">Software de gestión</span>
             </div>
           )}
-          <button className="collapse-btn" onClick={() => { setCollapsed(!collapsed); setMobileOpen(false); }} aria-label="Toggle sidebar">
+          <button className="collapse-btn" onClick={() => {
+            if (window.innerWidth <= 768) {
+              setMobileOpen(false);
+            } else {
+              setCollapsed(!collapsed);
+            }
+          }} aria-label="Toggle sidebar">
             <span className={`collapse-icon${collapsed ? ' rotated' : ''}`}>{icons.chevron}</span>
           </button>
         </div>
@@ -235,6 +242,11 @@ function App() {
         </nav>
 
         <div className="sidebar-footer">
+          {collapsed && (
+            <button className="expand-btn" onClick={() => setCollapsed(false)} aria-label="Expandir menú" title="Expandir menú">
+              <span className="collapse-icon" style={{ transform: 'rotate(180deg)' }}>{icons.chevron}</span>
+            </button>
+          )}
           <button className="theme-toggle" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'} title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
             <span className="theme-icon-wrap">
               {theme === 'dark' ? icons.sun : icons.moon}
@@ -254,7 +266,7 @@ function App() {
       <main className="main-content">
         <header className="topbar">
           <div className="topbar-left">
-            <button className="mobile-menu-btn" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Menú">
+            <button className="mobile-menu-btn" onClick={() => { setCollapsed(false); setMobileOpen(o => !o); }} aria-label="Menú">
               {icons.menu}
             </button>
             <div className="topbar-title-group">
@@ -288,8 +300,37 @@ function App() {
             <button className="topbar-icon-btn" aria-label="Notificaciones" title="Notificaciones">
               {icons.bell}
             </button>
-            <div className="topbar-avatar" title={user?.username ?? 'Mi cuenta'}>
-              <span className="avatar-initials">{user ? user.username.slice(0, 2).toUpperCase() : 'PB'}</span>
+            <div className="topbar-avatar-wrap">
+              <div className="topbar-avatar" title={user?.username ?? 'Mi cuenta'} onClick={() => setUserMenuOpen(!userMenuOpen)}>
+                <span className="avatar-initials">{user ? user.username.slice(0, 2).toUpperCase() : 'PB'}</span>
+              </div>
+              {userMenuOpen && (
+                <>
+                  <div className="user-menu-backdrop" onClick={() => setUserMenuOpen(false)} />
+                  <div className="user-menu">
+                    <div className="user-menu-header">
+                      <div className="user-menu-avatar">
+                        <span>{user ? user.username.slice(0, 2).toUpperCase() : 'PB'}</span>
+                      </div>
+                      <div className="user-menu-info">
+                        <span className="user-menu-name">{user?.username ?? 'Usuario'}</span>
+                        <span className="user-menu-role">{user?.role === 'operator' ? 'Operador' : 'Administrador'}</span>
+                      </div>
+                    </div>
+                    <div className="user-menu-divider" />
+                    <button className="user-menu-item" onClick={() => { setUserMenuOpen(false); toggleTheme(); }}>
+                      <span className="user-menu-item-icon">{theme === 'dark' ? icons.sun : icons.moon}</span>
+                      {theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+                    </button>
+                    <button className="user-menu-item user-menu-logout" onClick={() => { setUserMenuOpen(false); handleLogout(); }}>
+                      <span className="user-menu-item-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                      </span>
+                      Cerrar sesión
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>

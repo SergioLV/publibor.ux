@@ -215,7 +215,7 @@
   background: var(--color-surface-3);
   color: var(--color-text-dim);
 }
-.tc-rank-1 { background: rgba(245, 166, 35, 0.15); color: #F5A623; }
+.tc-rank-1 { background: rgba(99, 102, 241, 0.15); color: #6366f1; }
 .tc-rank-2 { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
 .tc-rank-3 { background: rgba(180, 130, 80, 0.15); color: #b48250; }
 .tc-info {
@@ -349,13 +349,6 @@
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.5s ease-in-out infinite;
 }
-.stat-card-skeleton { min-height: 96px; }
-.skeleton-label { width: 55%; height: 0.6rem; }
-.skeleton-value { width: 70%; height: 1.4rem; margin-top: 0.25rem; }
-.skeleton-sub { width: 50%; height: 0.6rem; margin-top: 0.15rem; }
-.dash-panel-skeleton { display: flex; flex-direction: column; gap: 0.65rem; }
-.skeleton-heading { width: 40%; height: 0.65rem; margin-bottom: 0.35rem; }
-.skeleton-chart { width: 100%; height: 200px; border-radius: var(--radius-sm); }
 
 /* ---- Responsive ---- */
 @media (max-width: 1024px) {

@@ -160,7 +160,7 @@ export default function Prices() {
   }
 
   return (
-    <div className="prices-page">
+    <div className="prices-page fade-in">
       <p className="prices-subtitle">
         Precios base por servicio. Se aplican cuando el cliente no tiene precio preferencial.
       </p>

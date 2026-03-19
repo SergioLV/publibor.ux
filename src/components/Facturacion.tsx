@@ -204,15 +204,15 @@ export default function Facturacion() {
               </tr>
             </thead>
             <tbody>
-              {loading && Array.from({ length: 4 }).map((_, i) => (
-                <tr key={`skel-${i}`} className="fi-skel-row">
+              {loading && Array.from({ length: 6 }).map((_, i) => (
+                <tr key={`skel-${i}`} className="fi-skel-row" style={{ animationDelay: `${i * 0.04}s` }}>
                   {Array.from({ length: 10 }).map((__, j) => (
                     <td key={j}><span className="fi-skel" /></td>
                   ))}
                 </tr>
               ))}
-              {!loading && filtered.map((inv) => (
-                <tr key={inv.id} className={`fi-row ${inv.status === 'failed' || inv.status === 'error' ? 'fi-row-failed' : ''}`} onClick={() => setDetailInvoice(inv)}>
+              {!loading && filtered.map((inv, idx) => (
+                <tr key={inv.id} className={`fi-row fade-in-row ${inv.status === 'failed' || inv.status === 'error' ? 'fi-row-failed' : ''}`} style={{ animationDelay: `${idx * 0.02}s` }} onClick={() => setDetailInvoice(inv)}>
                   <td className="fi-cell-folio">{inv.folio ? `#${inv.folio}` : '—'}</td>
                   <td><span className="fi-dte-badge">FE {inv.tipo_dte}</span></td>
                   <td className="fi-cell-date">{formatFecha(inv.fecha_emision)}</td>
@@ -261,15 +261,15 @@ export default function Facturacion() {
 
       {/* Mobile invoice cards */}
       <div className="fi-mobile-cards">
-        {loading && Array.from({ length: 3 }).map((_, i) => (
-          <div key={`mskel-${i}`} className="fi-mcard fi-mcard-skel">
+        {loading && Array.from({ length: 4 }).map((_, i) => (
+          <div key={`mskel-${i}`} className="fi-mcard fi-mcard-skel" style={{ animationDelay: `${i * 0.05}s` }}>
             <div className="fi-mcard-top"><span className="fi-skel" style={{ width: '40%' }} /><span className="fi-skel" style={{ width: '50px' }} /></div>
             <div className="fi-mcard-mid"><span className="fi-skel" style={{ width: '60%' }} /><span className="fi-skel" style={{ width: '30%' }} /></div>
             <div className="fi-mcard-bot"><span className="fi-skel" style={{ width: '45%' }} /></div>
           </div>
         ))}
-        {!loading && filtered.map((inv) => (
-          <div key={inv.id} className={`fi-mcard ${inv.status === 'failed' || inv.status === 'error' ? 'fi-mcard-failed' : ''}`} onClick={() => setDetailInvoice(inv)}>
+        {!loading && filtered.map((inv, idx) => (
+          <div key={inv.id} className={`fi-mcard fade-in-row ${inv.status === 'failed' || inv.status === 'error' ? 'fi-mcard-failed' : ''}`} style={{ animationDelay: `${idx * 0.03}s` }} onClick={() => setDetailInvoice(inv)}>
             <div className="fi-mcard-top">
               <span className="fi-mcard-folio">{inv.folio ? `#${inv.folio}` : 'Sin folio'}</span>
               <span className="fi-dte-badge">FE {inv.tipo_dte}</span>

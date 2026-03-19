@@ -199,6 +199,7 @@
   width: 100%;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
+  table-layout: fixed;
 }
 .fi-table thead {
   position: sticky;
@@ -222,6 +223,18 @@
 .fi-th-total { color: var(--color-text-dim); }
 .fi-th-folio { width: 80px; }
 .fi-th-action { width: 44px; }
+
+/* Fixed column widths for stable layout */
+.fi-table th:nth-child(1) { width: 80px; }   /* Folio */
+.fi-table th:nth-child(2) { width: 70px; }   /* Tipo */
+.fi-table th:nth-child(3) { width: 90px; }   /* Fecha */
+.fi-table th:nth-child(4) { width: auto; }   /* Cliente — flex */
+.fi-table th:nth-child(5) { width: 70px; }   /* Órdenes */
+.fi-table th:nth-child(6) { width: 100px; }  /* Neto */
+.fi-table th:nth-child(7) { width: 80px; }   /* IVA */
+.fi-table th:nth-child(8) { width: 110px; }  /* Total */
+.fi-table th:nth-child(9) { width: 90px; }   /* Estado */
+.fi-table th:nth-child(10) { width: 70px; }  /* Acción */
 
 /* Rows */
 .fi-row {

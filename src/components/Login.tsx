@@ -27,13 +27,14 @@ export default function Login({ onLogin }: Props) {
       const { token, expires_at } = await apiLogin(username.trim(), password);
       setAuthToken(token, expires_at);
       onLogin();
+      // Don't setLoading(false) on success — keep the overlay visible
+      // until App unmounts this component after apiGetMe resolves
     } catch (err) {
       setError(
         err instanceof Error && err.message.includes('401')
           ? 'Usuario o contraseña incorrectos'
           : 'Error de conexión. Intente nuevamente.'
       );
-    } finally {
       setLoading(false);
     }
   }
