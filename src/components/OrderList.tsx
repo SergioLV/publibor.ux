@@ -1180,6 +1180,25 @@ export default function OrderList({ onNavigate }: { onNavigate: (view: string) =
                 </div>
               </div>
             )}
+
+            {/* Mobile sticky bottom bar */}
+            <div className="eom-mobile-bar">
+              <div className="eom-mobile-summary">
+                <div className="eom-mobile-summary-left">
+                  <span className="eom-mobile-summary-label">Total</span>
+                  <span className="eom-mobile-summary-total">{editCalc ? formatCLP(editCalc.total_amount) : '—'}</span>
+                </div>
+                <span className="eom-mobile-summary-detail">
+                  {editing.meters || '0'} {unitLabel(editing.service)} · {editFinalPrice ? formatCLP(editFinalPrice) : '—'}/{unitLabel(editing.service)}
+                </span>
+              </div>
+              <div className="eom-mobile-actions">
+                <button className="eom-btn-cancel" onClick={closeEdit}>Cancelar</button>
+                <button className="eom-btn-save" onClick={handleSaveEdit} disabled={saving || !editCalc}>
+                  {saving ? '⏳ Guardando...' : '💾 Guardar'}
+                </button>
+              </div>
+            </div>
           </div>
           {lightboxSrc && (
             <div className="eom-lightbox" onClick={() => setLightboxSrc(null)}>

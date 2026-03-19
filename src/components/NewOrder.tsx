@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { Client, PriceTier, ServiceType, PurchaseOrder } from '../data/types';
 import { unitLabel, isPerCloth } from '../data/types';
 import { getEffectivePrice, calculateOrder } from '../data/store';
@@ -215,6 +216,19 @@ export default function NewOrder({ onNavigate }: Props) {
     e.target.value = '';
   }
 
+  function resetFormKeepClient() {
+    setSuccess(false);
+    setService('');
+    setQuantity('');
+    setPriceOverride('');
+    setDescription('');
+    setPurchaseOrders([]);
+    setImages([]);
+    setBultos('');
+    setError('');
+    setShowMoreServices(false);
+  }
+
   const step = !clientId ? 1 : !service ? 2 : 3;
 
   if (success) {
@@ -226,6 +240,11 @@ export default function NewOrder({ onNavigate }: Props) {
           <p>La orden ha sido registrada exitosamente.</p>
           <div className="success-actions">
             <button className="btn-primary" onClick={() => onNavigate('orders')}>Ver Órdenes</button>
+            {selectedClient && (
+              <button className="btn-primary" onClick={resetFormKeepClient}>
+                Crear otra orden para {selectedClient.name}
+              </button>
+            )}
             <button className="btn-ghost" onClick={resetForm}>Crear otra</button>
           </div>
         </div>
@@ -235,6 +254,29 @@ export default function NewOrder({ onNavigate }: Props) {
 
   return (
     <div className="no-layout">
+      <AnimatePresence>
+        {submitting && (
+          <motion.div
+            className="pb-loading-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+          >
+            <motion.div
+              className="pb-loading-content"
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+            >
+              <div className="pb-loading-spinner" />
+              <span className="pb-loading-brand">PUBLIBOR</span>
+              <span className="pb-loading-text">Creando orden...</span>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* LEFT: Form */}
       <div className="no-form">
         {error && <div className="error-msg">{error}</div>}
