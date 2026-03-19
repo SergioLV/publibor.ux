@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { fetchClients, fetchOrders, apiUpdateOrder, apiBulkMarkPaid, getCotizacionUrl, openBulkCotizacion, downloadExcelExport, fetchDefaultPrices, fetchClientById, apiCreateInvoice, apiPreviewInvoice } from '../data/api';
+import { fetchClients, fetchOrders, apiUpdateOrder, apiDeleteOrder, apiBulkMarkPaid, getCotizacionUrl, openBulkCotizacion, downloadExcelExport, fetchDefaultPrices, fetchClientById, apiCreateInvoice, apiPreviewInvoice } from '../data/api';
 import type { PhotoPayload } from '../data/api';
 import { formatCLP, formatDate, formatDateShort } from '../data/format';
 import type { Order, Client, PriceTier, ServiceType, PurchaseOrder, OrderPhoto } from '../data/types';
@@ -73,6 +73,8 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
   const [saving, setSaving] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [deleteOrder, setDeleteOrder] = useState<Order | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchClients({ limit: 100 }).then((res) => setClients(res.clients)).catch(() => {});
@@ -460,6 +462,27 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
     }
   }
 
+  async function handleDeleteOrder() {
+    if (!deleteOrder) return;
+    setDeleting(true);
+    try {
+      await apiDeleteOrder(deleteOrder.id);
+      setFeedback(`Orden #${deleteOrder.id} eliminada`);
+      setTimeout(() => setFeedback(''), 3000);
+      setDeleteOrder(null);
+      selected.delete(deleteOrder.id);
+      setSelected(new Set(selected));
+      selectedOrders.delete(deleteOrder.id);
+      setSelectedOrders(new Map(selectedOrders));
+      if (editing?.id === deleteOrder.id) closeEdit();
+      await loadOrders();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error eliminando orden');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   function clearFilters() {
     setFilterClient('');
     setFilterService('');
@@ -598,6 +621,11 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
                 <a href={getCotizacionUrl(o.id)} target="_blank" rel="noopener noreferrer" className="btn-action" title="Descargar cotización">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                 </a>
+                )}
+                {userRole !== 'operator' && !o.is_paid && !o.invoice_id && (
+                  <button className="btn-action btn-action-delete" onClick={() => setDeleteOrder(o)} title="Eliminar orden">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
                 )}
               </td>
             </tr>
@@ -883,6 +911,41 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Order Confirmation Modal */}
+      {deleteOrder && (
+        <div className="modal-backdrop" onClick={() => setDeleteOrder(null)}>
+          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="cm-header">
+              <h3>Eliminar orden</h3>
+              <button className="eom-close" onClick={() => setDeleteOrder(null)}>✕</button>
+            </div>
+            <div className="cm-body">
+              <p className="cm-desc">
+                ¿Estás seguro de que quieres eliminar la orden <strong>#{deleteOrder.id}</strong>?
+              </p>
+              <div className="cm-clients">
+                <div className="cm-client-group">
+                  <div className="cm-client-name">{clientMap[deleteOrder.client_id]?.name || `#${deleteOrder.client_id}`}</div>
+                  <div className="cm-order-row">
+                    <span className="cm-order-id">#{deleteOrder.id}</span>
+                    <span className="cm-order-service">{deleteOrder.service}</span>
+                    <span className="cm-order-meters">{deleteOrder.meters} {unitLabel(deleteOrder.service as ServiceType)}</span>
+                    <span className="cm-order-total">{formatCLP(deleteOrder.total_amount)}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="delete-warning">Esta acción no se puede deshacer.</div>
+            </div>
+            <div className="cm-actions">
+              <button className="btn-ghost" onClick={() => setDeleteOrder(null)}>Cancelar</button>
+              <button className="btn-delete-confirm" onClick={handleDeleteOrder} disabled={deleting}>
+                {deleting ? '⏳ Eliminando...' : '🗑 Eliminar'}
+              </button>
             </div>
           </div>
         </div>
@@ -1201,6 +1264,17 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
                           🧾 Facturar
                         </button>
                       )}
+                      {!orders.find(o => o.id === editing.id)?.is_paid && !orders.find(o => o.id === editing.id)?.invoice_id && (
+                        <button
+                          className="eom-quick-btn eom-quick-delete"
+                          onClick={() => {
+                            const order = orders.find(o => o.id === editing.id);
+                            if (order) { closeEdit(); setDeleteOrder(order); }
+                          }}
+                        >
+                          🗑 Eliminar orden
+                        </button>
+                      )}
                     </div>
                   </div>
                   )}
@@ -1309,6 +1383,17 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
                         }}
                       >
                         🧾 Facturar
+                      </button>
+                    )}
+                    {!orders.find(o => o.id === editing.id)?.is_paid && !orders.find(o => o.id === editing.id)?.invoice_id && (
+                      <button
+                        className="eom-quick-btn eom-quick-delete"
+                        onClick={() => {
+                          const order = orders.find(o => o.id === editing.id);
+                          if (order) { closeEdit(); setDeleteOrder(order); }
+                        }}
+                      >
+                        🗑 Eliminar orden
                       </button>
                     )}
                   </div>

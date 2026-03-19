@@ -375,6 +375,12 @@ export async function apiUpdateOrder(id: string, data: {
   return mapApiOrder(res.data);
 }
 
+// --- Delete order ---
+
+export async function apiDeleteOrder(id: string): Promise<void> {
+  await apiFetch<{ message: string }>(`/orders/${id}`, { method: 'DELETE' });
+}
+
 // --- Bulk mark paid ---
 
 export async function apiBulkMarkPaid(ids: string[]): Promise<number> {

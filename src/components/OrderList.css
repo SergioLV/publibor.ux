@@ -1850,6 +1850,53 @@ tr.row-selected td { background: var(--color-primary-dim); }
   color: var(--color-primary);
   background: var(--color-primary-dim);
 }
+.eom-quick-delete {
+  color: var(--color-error);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+.eom-quick-delete:hover {
+  border-color: var(--color-error);
+  color: var(--color-error);
+  background: var(--color-error-bg);
+}
+
+/* Delete button in table */
+.btn-action-delete {
+  color: var(--color-text-muted);
+}
+.btn-action-delete:hover {
+  color: var(--color-error);
+  border-color: rgba(239, 68, 68, 0.3);
+  background: var(--color-error-bg);
+}
+
+/* Delete confirmation */
+.delete-warning {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--color-error-bg);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  border-radius: var(--radius-sm);
+  color: var(--color-error);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+.btn-delete-confirm {
+  padding: 0.5rem 1.2rem;
+  background: var(--color-error);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-delete-confirm:hover:not(:disabled) {
+  background: #dc2626;
+}
+.btn-delete-confirm:disabled { opacity: 0.5; cursor: default; }
 
 .eom-sidebar-actions {
   margin-top: auto;
