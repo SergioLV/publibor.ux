@@ -350,7 +350,9 @@
   flex-direction: column;
   background: var(--color-bg);
   overflow-y: auto;
+  overflow-x: hidden;
   min-height: 100vh;
+  min-width: 0;
 }
 
 .topbar {
