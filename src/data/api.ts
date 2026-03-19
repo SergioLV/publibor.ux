@@ -300,13 +300,21 @@ export async function fetchOrders(params: FetchOrdersParams = {}): Promise<Fetch
   };
 }
 
+export interface PhotoPayload {
+  filename: string;
+  content_type: string;
+  data: string;
+}
+
 export async function apiCreateOrder(data: {
   client_id: number;
   service: string;
   description?: string;
   meters: number;
   unit_price?: number;
+  bultos?: number;
   purchase_orders?: PurchaseOrder[];
+  photos?: PhotoPayload[];
 }): Promise<Order> {
   const body: Record<string, unknown> = {
     client_id: data.client_id,
@@ -315,7 +323,9 @@ export async function apiCreateOrder(data: {
   };
   if (data.description) body.description = data.description;
   if (data.unit_price !== undefined) body.unit_price = data.unit_price;
+  if (data.bultos !== undefined && data.bultos > 0) body.bultos = data.bultos;
   if (data.purchase_orders && data.purchase_orders.length > 0) body.purchase_orders = data.purchase_orders;
+  if (data.photos && data.photos.length > 0) body.photos = data.photos;
 
   const res = await apiFetch<{ data: ApiOrder }>('/orders', {
     method: 'POST',

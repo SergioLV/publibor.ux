@@ -3,6 +3,7 @@ import type { Client, PriceTier, ServiceType, PurchaseOrder } from '../data/type
 import { unitLabel, isPerCloth } from '../data/types';
 import { getEffectivePrice, calculateOrder } from '../data/store';
 import { fetchClients, fetchClientById, fetchDefaultPrices, apiCreateOrder, fetchOrders, downloadCotizacion } from '../data/api';
+import type { PhotoPayload } from '../data/api';
 import { formatCLP, formatDate } from '../data/format';
 import type { Order } from '../data/types';
 import './NewOrder.css';
@@ -18,8 +19,6 @@ const SERVICE_ICONS: Record<string, string> = {
   TEXTIL: '👕',
   POR_CONFIRMAR: '📦',
 };
-
-const DISABLED_SERVICES = new Set<ServiceType>(['LASER_CO2', 'LASER_FIBRA', 'BORDADOS', 'TEXTIL']);
 
 function clientInitials(name: string) {
   return name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('');
@@ -118,6 +117,13 @@ export default function NewOrder({ onNavigate }: Props) {
     return '';
   }, [service, quantity, tiers, hasTiers]);
 
+  function dataUrlToPhoto(dataUrl: string, idx: number): PhotoPayload {
+    const match = dataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
+    if (!match) return { filename: `foto${idx + 1}.jpg`, content_type: 'image/jpeg', data: dataUrl };
+    const ext = match[1].split('/')[1];
+    return { filename: `foto${idx + 1}.${ext}`, content_type: match[1], data: match[2] };
+  }
+
   async function handleSubmit() {
     setError('');
     if (!clientId) { setError('Seleccione un cliente'); return; }
@@ -135,10 +141,12 @@ export default function NewOrder({ onNavigate }: Props) {
         description: description.trim() || undefined,
         meters: Number(quantity),
         unit_price: (isManualOnly || isManualOverride) ? Number(priceOverride) : undefined,
+        bultos: bultos && Number(bultos) > 0 ? Number(bultos) : undefined,
         purchase_orders: purchaseOrders.length > 0 ? purchaseOrders.map(po => ({
           oc_number: po.oc_number,
           ...(po.date ? { date: po.date } : {}),
         })) : undefined,
+        photos: images.length > 0 ? images.map((img, i) => dataUrlToPhoto(img, i)) : undefined,
       });
       setSuccess(true);
     } catch (e) {
@@ -338,21 +346,17 @@ export default function NewOrder({ onNavigate }: Props) {
                   ← Volver
                 </button>
                 <div className="service-grid">
-                  {(['DTF', 'SUBLIMACION', 'UV', 'TEXTURIZADO', 'LASER_CO2', 'LASER_FIBRA', 'BORDADOS', 'TEXTIL'] as ServiceType[]).map((s) => {
-                    const disabled = DISABLED_SERVICES.has(s);
-                    return (
-                      <button
-                        key={s}
-                        className={`service-option ${service === s ? 'selected' : ''} ${disabled ? 'so-disabled' : ''}`}
-                        onClick={() => { if (!disabled) { setService(s); setQuantity(''); setPriceOverride(''); } }}
-                        disabled={disabled}
-                      >
-                        <span className="so-icon">{SERVICE_ICONS[s] ?? '📋'}</span>
-                        <span className="so-name">{s.replace('_', ' ')}</span>
-                        {disabled ? <span className="so-unit so-coming">Próximamente</span> : <span className="so-unit">por {unitLabel(s)}</span>}
-                      </button>
-                    );
-                  })}
+                  {(['DTF', 'SUBLIMACION', 'UV', 'TEXTURIZADO', 'LASER_CO2', 'LASER_FIBRA', 'BORDADOS', 'TEXTIL'] as ServiceType[]).map((s) => (
+                    <button
+                      key={s}
+                      className={`service-option ${service === s ? 'selected' : ''}`}
+                      onClick={() => { setService(s); setQuantity(''); setPriceOverride(''); }}
+                    >
+                      <span className="so-icon">{SERVICE_ICONS[s] ?? '📋'}</span>
+                      <span className="so-name">{s.replace('_', ' ')}</span>
+                      <span className="so-unit">por {unitLabel(s)}</span>
+                    </button>
+                  ))}
                 </div>
               </>
             )}
@@ -624,10 +628,10 @@ export default function NewOrder({ onNavigate }: Props) {
           </div>
 
           <div className="side-actions">
-            <button className="btn-submit side-btn" onClick={handleSubmit} disabled={!calc || !!priceError || submitting || service === 'POR_CONFIRMAR'}>
-              {submitting ? 'Creando...' : service === 'POR_CONFIRMAR' ? 'Solo vista previa' : 'Crear Orden'}
+            <button className="btn-submit side-btn" onClick={handleSubmit} disabled={!calc || !!priceError || submitting}>
+              {submitting ? 'Creando...' : 'Crear Orden'}
             </button>
-            <button className="btn-cotizacion side-btn" onClick={handleCotizacion} disabled={!calc || !!priceError || generatingPdf || service === 'POR_CONFIRMAR'}>
+            <button className="btn-cotizacion side-btn" onClick={handleCotizacion} disabled={!calc || !!priceError || generatingPdf}>
               {generatingPdf ? 'Generando...' : 'Cotización PDF'}
             </button>
           </div>
@@ -656,10 +660,10 @@ export default function NewOrder({ onNavigate }: Props) {
         <span className={`st-amount ${totalChanged ? 'pulse' : ''}`} key={calc ? `m${calc.total_amount}` : 'mz'}>
           {calc ? formatCLP(calc.total_amount) : '$0'}
         </span>
-        <button className="btn-cotizacion" onClick={handleCotizacion} disabled={!calc || !!priceError || generatingPdf || service === 'POR_CONFIRMAR'}>
+        <button className="btn-cotizacion" onClick={handleCotizacion} disabled={!calc || !!priceError || generatingPdf}>
           {generatingPdf ? '...' : 'PDF'}
         </button>
-        <button className="btn-submit" onClick={handleSubmit} disabled={!calc || !!priceError || submitting || service === 'POR_CONFIRMAR'}>
+        <button className="btn-submit" onClick={handleSubmit} disabled={!calc || !!priceError || submitting}>
           {submitting ? '...' : 'Crear'}
         </button>
       </div>
