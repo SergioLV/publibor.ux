@@ -177,7 +177,7 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
   const editIsManualOnly = editing && !editHasTiers;
 
   const editCalc = useMemo(() => {
-    if (!editFinalPrice || !editing || !editing.meters || Number(editing.meters) < 0.1) return null;
+    if (editFinalPrice === null || !editing || !editing.meters || Number(editing.meters) < 0.1) return null;
     return calculateOrder(editFinalPrice, Number(editing.meters));
   }, [editFinalPrice, editing]);
 
@@ -1142,6 +1142,68 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
                       </div>
                     </div>
                   </div>
+
+                  {/* Mobile-only quick actions */}
+                  {userRole !== 'operator' && (
+                  <div className="eom-section eom-mobile-quick">
+                    <div className="eom-section-header">
+                      <span className="eom-section-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        Acciones rápidas
+                      </span>
+                    </div>
+                    <div className="eom-section-body eom-mobile-quick-body">
+                      <button
+                        className="eom-quick-btn"
+                        onClick={async () => {
+                          try { await downloadExcelExport([editing.id]); } catch { setError('Error exportando'); }
+                        }}
+                      >
+                        📥 Exportar resumen
+                      </button>
+                      <a href={getCotizacionUrl(editing.id)} target="_blank" rel="noopener noreferrer" className="eom-quick-btn">
+                        📄 Cotización PDF
+                      </a>
+                      {!orders.find(o => o.id === editing.id)?.is_paid && (
+                        <button
+                          className="eom-quick-btn eom-quick-paid"
+                          onClick={() => {
+                            const order = orders.find(o => o.id === editing.id);
+                            if (order) { closeEdit(); setSingleMarkPaidOrder(order); setShowMarkPaidConfirm(true); }
+                          }}
+                        >
+                          ✓ Marcar como pagada
+                        </button>
+                      )}
+                      {!orders.find(o => o.id === editing.id)?.invoice_id && (
+                        <button
+                          className="eom-quick-btn eom-quick-facturar"
+                          onClick={async () => {
+                            const order = orders.find(o => o.id === editing.id);
+                            if (!order) return;
+                            closeEdit();
+                            setSelected(new Set([order.id]));
+                            setSelectedOrders(new Map([[order.id, order]]));
+                            setPreviewLoading(true);
+                            setPreviewUrl(null);
+                            setShowFacturarPreview(true);
+                            try {
+                              const blobUrl = await apiPreviewInvoice([Number(order.id)]);
+                              setPreviewUrl(blobUrl);
+                            } catch (e) {
+                              setError(e instanceof Error ? e.message : 'Error obteniendo preview');
+                              setShowFacturarPreview(false);
+                            } finally {
+                              setPreviewLoading(false);
+                            }
+                          }}
+                        >
+                          🧾 Facturar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  )}
                 </div>
 
                 {/* Right: Sidebar */}

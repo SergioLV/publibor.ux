@@ -1207,13 +1207,42 @@ tr.row-selected td { background: var(--color-primary-dim); }
 .btn-facturar-emit:disabled { opacity: 0.4; cursor: default; }
 
 @media (max-width: 768px) {
+  .facturar-modal {
+    max-width: 100vw;
+    max-height: 100vh;
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+    padding: 1rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
   .fm-content {
     flex-direction: column;
+    overflow: visible;
   }
   .fm-preview-pane {
-    min-height: 300px;
+    min-height: 250px;
+    max-height: 40vh;
+  }
+  .fm-preview-iframe {
+    min-height: 250px;
   }
   .fm-details-pane {
+    width: 100%;
+  }
+  .fm-items-header,
+  .fm-item-row {
+    grid-template-columns: 40px 1fr 50px 60px;
+    font-size: 0.7rem;
+  }
+  .fm-pago-dias {
+    flex-wrap: wrap;
+  }
+  .fm-actions-row {
+    flex-direction: column;
+  }
+  .fm-actions-row button {
     width: 100%;
   }
 }
@@ -2224,5 +2253,22 @@ tr.row-clickable:hover td { background: var(--color-surface-hover); }
   @keyframes filters-slide-down {
     from { opacity: 0; transform: translateY(-6px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* ═══════════════════════════════════════
+   MOBILE-ONLY QUICK ACTIONS (inside form)
+   ═══════════════════════════════════════ */
+.eom-mobile-quick {
+  display: none;
+}
+@media (max-width: 768px) {
+  .eom-mobile-quick {
+    display: block;
+  }
+  .eom-mobile-quick-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
   }
 }

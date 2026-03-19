@@ -662,10 +662,109 @@
 @media (max-width: 900px) {
   .fi-kpis, .fi-kpis:has(.fi-kpi:nth-child(4)) { grid-template-columns: 1fr 1fr; }
 }
+/* ---- Mobile invoice cards ---- */
+.fi-mobile-cards {
+  display: none;
+}
+
 @media (max-width: 768px) {
   .fi-header { flex-direction: column; gap: 0.75rem; }
   .fi-controls { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .fi-filter-group { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; max-width: 100%; }
+  .fi-filter-chip { flex-shrink: 0; }
   .fi-detail { width: 100%; }
+
+  .fi-table-card { display: none !important; }
+  .fi-mobile-cards { display: flex; flex-direction: column; gap: 0.6rem; }
+
+  .fi-mcard {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 0.85rem 1rem;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .fi-mcard:active {
+    border-color: var(--color-border-hover);
+    box-shadow: var(--shadow-sm);
+  }
+  .fi-mcard-failed { opacity: 0.55; }
+
+  .fi-mcard-top {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.45rem;
+  }
+  .fi-mcard-folio {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--color-text);
+  }
+  .fi-mcard-mid {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.55rem;
+  }
+  .fi-mcard-client {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--color-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 60%;
+  }
+  .fi-mcard-date {
+    font-size: 0.75rem;
+    color: var(--color-text-dim);
+  }
+  .fi-mcard-bot {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+  .fi-mcard-amounts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+  .fi-mcard-total {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .fi-mcard-meta {
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+  }
+  .fi-mcard-actions {
+    display: flex;
+    gap: 0.35rem;
+  }
+  .fi-mcard-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    background: var(--color-surface);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius);
+  }
+
+  /* Skeleton cards */
+  .fi-mcard-skel .fi-skel { height: 10px; }
+  .fi-mcard-skel .fi-mcard-top,
+  .fi-mcard-skel .fi-mcard-mid,
+  .fi-mcard-skel .fi-mcard-bot {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
 }
 @media (max-width: 480px) {
   .fi-kpis, .fi-kpis:has(.fi-kpi:nth-child(4)) { grid-template-columns: 1fr; }
