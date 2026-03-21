@@ -75,6 +75,15 @@ export default function ClientList() {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setPage(1); }, [search, showAll]);
 
+  // Escape key closes the edit panel
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && editing && !loadingEdit) { setEditing(null); e.stopImmediatePropagation(); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [editing, loadingEdit]);
+
   const tiersGrouped = useMemo(() => {
     const map: Partial<Record<ServiceType, PriceTier[]>> = {};
     for (const s of SERVICE_TYPES) {

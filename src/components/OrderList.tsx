@@ -81,6 +81,21 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
     fetchDefaultPrices().then(setTiers).catch(() => {});
   }, []);
 
+  // Escape key closes any open modal/panel (stops propagation to prevent App-level navigate back)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (lightboxSrc) { setLightboxSrc(null); e.stopImmediatePropagation(); return; }
+      if (deleteOrder) { setDeleteOrder(null); e.stopImmediatePropagation(); return; }
+      if (showFacturarPreview) { setShowFacturarPreview(false); setPreviewUrl(null); e.stopImmediatePropagation(); return; }
+      if (showMarkPaidConfirm) { setShowMarkPaidConfirm(false); setSingleMarkPaidOrder(null); e.stopImmediatePropagation(); return; }
+      if (showClientPicker) { setShowClientPicker(false); e.stopImmediatePropagation(); return; }
+      if (editing) { closeEdit(); e.stopImmediatePropagation(); return; }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [lightboxSrc, deleteOrder, showFacturarPreview, showMarkPaidConfirm, showClientPicker, editing]);
+
   const clientMap = useMemo(() => {
     const m: Record<string, Client> = {};
     clients.forEach((c) => (m[c.id] = c));

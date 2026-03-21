@@ -45,23 +45,30 @@ function App() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const viewHistory = useRef<View[]>([]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('publibor-theme', theme);
   }, [theme]);
 
-  // Keyboard shortcut: Cmd/Ctrl+K to focus search
+  // Keyboard shortcut: Cmd/Ctrl+K to focus search, Escape to close popups or go back
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         searchRef.current?.focus();
       }
+      if (e.key === 'Escape') {
+        if (userMenuOpen) { setUserMenuOpen(false); return; }
+        if (mobileOpen) { setMobileOpen(false); return; }
+        // No popup open — navigate back
+        navigateBack();
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [userMenuOpen, mobileOpen, view]);
 
   // Auth check on mount
   useEffect(() => {
@@ -94,9 +101,18 @@ function App() {
   const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
   function navigate(v: View) {
+    if (v !== view) viewHistory.current.push(view);
     setView(v);
     localStorage.setItem('publibor-view', v);
     setMobileOpen(false);
+  }
+
+  function navigateBack() {
+    const prev = viewHistory.current.pop();
+    if (prev && prev !== view) {
+      setView(prev);
+      localStorage.setItem('publibor-view', prev);
+    }
   }
 
   const isOperator = user?.role === 'operator';
@@ -316,6 +332,14 @@ function App() {
                         <span className="user-menu-name">{user?.username ?? 'Usuario'}</span>
                         <span className="user-menu-role">{user?.role === 'operator' ? 'Operador' : 'Administrador'}</span>
                       </div>
+                    </div>
+                    <div className="user-menu-plan">
+                      <span className={`user-menu-plan-badge ${isOperator ? 'plan-solo' : 'plan-full'}`}>
+                        {isOperator ? 'Solo Plataforma' : 'Plataforma'}
+                      </span>
+                      <span className="user-menu-plan-desc">
+                        {isOperator ? 'Gestión de órdenes' : 'Gestión + Facturación electrónica'}
+                      </span>
                     </div>
                     <div className="user-menu-divider" />
                     <button className="user-menu-item" onClick={() => { setUserMenuOpen(false); toggleTheme(); }}>

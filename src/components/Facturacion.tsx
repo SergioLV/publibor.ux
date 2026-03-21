@@ -28,6 +28,15 @@ export default function Facturacion() {
 
   useEffect(() => { loadInvoices(); }, []);
 
+  // Escape key closes the detail panel
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && detailInvoice) { setDetailInvoice(null); e.stopImmediatePropagation(); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [detailInvoice]);
+
   async function loadInvoices() {
     setLoading(true);
     try {

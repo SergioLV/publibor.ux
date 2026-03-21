@@ -622,6 +622,37 @@
   background: var(--color-border);
   margin: 0.25rem 0;
 }
+.user-menu-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.5rem;
+  background: var(--color-surface-2);
+  border-radius: 8px;
+  margin: 0.15rem 0;
+}
+.user-menu-plan-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  width: fit-content;
+}
+.user-menu-plan-badge.plan-full {
+  background: var(--color-primary-dim);
+  color: var(--color-primary);
+}
+.user-menu-plan-badge.plan-solo {
+  background: var(--color-surface-3, rgba(107, 114, 128, 0.1));
+  color: var(--color-text-muted);
+}
+.user-menu-plan-desc {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  padding-left: 0.1rem;
+}
 .user-menu-item {
   display: flex;
   align-items: center;

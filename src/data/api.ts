@@ -394,9 +394,12 @@ export async function apiBulkMarkPaid(ids: string[]): Promise<number> {
 // --- Bulk Cotización PDF ---
 
 export async function openBulkCotizacion(orderIds: string[]): Promise<void> {
+  const token = localStorage.getItem('publibor-token');
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(`${API_BASE}/orders/cotizacion`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ order_ids: orderIds.map(Number) }),
   });
   if (!res.ok) {
@@ -419,7 +422,8 @@ export function getBulkCotizacionUrl(orderIds: string[]): string {
 // --- Cotización PDF ---
 
 export function getCotizacionUrl(orderId: string): string {
-  return `${API_BASE}/orders/${orderId}/cotizacion`;
+  const token = localStorage.getItem('publibor-token');
+  return `${API_BASE}/orders/${orderId}/cotizacion${token ? `?token=${encodeURIComponent(token)}` : ''}`;
 }
 
 export function getExcelExportUrl(orderIds: string[]): string {
@@ -461,9 +465,13 @@ export async function downloadCotizacion(data: {
   if (data.unit_price !== undefined) payload.unit_price = data.unit_price;
   if (data.purchase_orders && data.purchase_orders.length > 0) payload.purchase_orders = data.purchase_orders;
 
+  const token = localStorage.getItem('publibor-token');
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   const res = await fetch(`${API_BASE}/cotizacion`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ data: payload }),
   });
   if (!res.ok) {
