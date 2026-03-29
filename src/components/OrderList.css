@@ -1311,7 +1311,7 @@ tr.row-selected td { background: var(--color-primary-dim); }
   top: 0;
   right: 0;
   bottom: 0;
-  width: 740px;
+  width: min(680px, 100vw);
   max-width: 100vw;
   background: var(--color-surface);
   border-left: 1px solid var(--color-border);
@@ -1389,21 +1389,21 @@ tr.row-selected td { background: var(--color-primary-dim); }
 .eom-form {
   flex: 1;
   overflow-y: auto;
-  padding: 1.25rem;
+  padding: 1rem 1.15rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.85rem;
 }
 
 /* Right: sticky sidebar */
 .eom-sidebar {
-  width: 240px;
+  width: 200px;
   flex-shrink: 0;
   border-left: 1px solid var(--color-border);
   background: var(--color-surface-2);
   display: flex;
   flex-direction: column;
-  padding: 1.25rem;
+  padding: 1rem;
   overflow-y: auto;
 }
 
@@ -1432,20 +1432,45 @@ tr.row-selected td { background: var(--color-primary-dim); }
   color: var(--color-text-muted);
 }
 .eom-section-label svg { opacity: 0.5; }
-.eom-section-body { padding: 0.75rem; }
+.eom-section-body { padding: 0.65rem; }
+
+/* Collapsible section behavior */
+.eom-section-header {
+  cursor: pointer;
+  user-select: none;
+}
+.eom-section-header:hover {
+  background: var(--color-surface-hover);
+}
+.eom-section-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.eom-section-chevron {
+  color: var(--color-text-muted);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.eom-section.collapsed .eom-section-chevron {
+  transform: rotate(-90deg);
+}
+.eom-section.collapsed .eom-section-header {
+  border-bottom: none;
+}
 
 /* Service grid — compact 3-col */
 .eom-service-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 .eom-service-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
-  padding: 0.55rem 0.35rem;
+  gap: 0.1rem;
+  padding: 0.45rem 0.25rem;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);

@@ -75,6 +75,14 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
   const [showFilters, setShowFilters] = useState(false);
   const [deleteOrder, setDeleteOrder] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
+    service: false,
+    details: false,
+    price: true,
+    po: true,
+    photos: true,
+  });
+  const toggleSection = (key: string) => setCollapsedSections((prev) => ({ ...prev, [key]: !prev[key] }));
 
   useEffect(() => {
     fetchClients({ limit: 100 }).then((res) => setClients(res.clients)).catch(() => {});
@@ -158,6 +166,7 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
       photos: order.photos || [],
       newPhotos: [],
     });
+    setCollapsedSections({ service: false, details: false, price: true, po: true, photos: true });
     setLoadingEditClient(true);
     try {
       const client = await fetchClientById(order.client_id);
@@ -997,13 +1006,15 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
                 {/* Left: Form */}
                 <div className="eom-form">
                   {/* Service Section */}
-                  <div className="eom-section">
-                    <div className="eom-section-header">
+                  <div className={`eom-section${collapsedSections.service ? ' collapsed' : ''}`}>
+                    <div className="eom-section-header" onClick={() => toggleSection('service')}>
                       <span className="eom-section-label">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
                         Servicio
                       </span>
+                      <svg className="eom-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                     </div>
+                    {!collapsedSections.service && (
                     <div className="eom-section-body">
                       <div className="eom-service-grid">
                         {availableServices.map((s) => (
@@ -1019,16 +1030,19 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
                         ))}
                       </div>
                     </div>
+                    )}
                   </div>
 
                   {/* Details Section */}
-                  <div className="eom-section">
-                    <div className="eom-section-header">
+                  <div className={`eom-section${collapsedSections.details ? ' collapsed' : ''}`}>
+                    <div className="eom-section-header" onClick={() => toggleSection('details')}>
                       <span className="eom-section-label">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                         Detalles
                       </span>
+                      <svg className="eom-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                     </div>
+                    {!collapsedSections.details && (
                     <div className="eom-section-body">
                       <div className="eom-details-grid three-col">
                         <div className="eom-field">
@@ -1064,18 +1078,23 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
                         </div>
                       </div>
                     </div>
+                    )}
                   </div>
 
                   {/* Price Section */}
                   {userRole !== 'operator' && (
-                  <div className="eom-section">
-                    <div className="eom-section-header">
+                  <div className={`eom-section${collapsedSections.price ? ' collapsed' : ''}`}>
+                    <div className="eom-section-header" onClick={() => toggleSection('price')}>
                       <span className="eom-section-label">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                         Precio
                       </span>
-                      {editIsManualOverride && <span className="eom-override-badge">Override</span>}
+                      <div className="eom-section-header-right">
+                        {editIsManualOverride && <span className="eom-override-badge">Override</span>}
+                        <svg className="eom-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                      </div>
                     </div>
+                    {!collapsedSections.price && (
                     <div className="eom-section-body">
                       {!editIsManualOnly && editAutoPrice && (
                         <div className="eom-price-suggested">
@@ -1105,25 +1124,32 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
                         )}
                       </div>
                     </div>
+                    )}
                   </div>
                   )}
 
                   {/* Purchase Orders Section */}
                   {userRole !== 'operator' && (
-                  <div className="eom-section">
-                    <div className="eom-section-header">
+                  <div className={`eom-section${collapsedSections.po ? ' collapsed' : ''}`}>
+                    <div className="eom-section-header" onClick={() => toggleSection('po')}>
                       <span className="eom-section-label">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
                         Órdenes de compra
                       </span>
-                      <button
-                        type="button"
-                        className="eom-po-add"
-                        onClick={() => setEditing({ ...editing, purchase_orders: [...editing.purchase_orders, { oc_number: '', date: '' }] })}
-                      >
-                        + Agregar
-                      </button>
+                      <div className="eom-section-header-right">
+                        {!collapsedSections.po && (
+                          <button
+                            type="button"
+                            className="eom-po-add"
+                            onClick={(e) => { e.stopPropagation(); setEditing({ ...editing, purchase_orders: [...editing.purchase_orders, { oc_number: '', date: '' }] }); }}
+                          >
+                            + Agregar
+                          </button>
+                        )}
+                        <svg className="eom-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                      </div>
                     </div>
+                    {!collapsedSections.po && (
                     <div className="eom-section-body">
                       {editing.purchase_orders.length === 0 && (
                         <span className="eom-po-empty">Sin órdenes de compra asociadas</span>
@@ -1160,17 +1186,20 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
                         </div>
                       ))}
                     </div>
+                    )}
                   </div>
                   )}
 
                   {/* Photos Section */}
-                  <div className="eom-section">
-                    <div className="eom-section-header">
+                  <div className={`eom-section${collapsedSections.photos ? ' collapsed' : ''}`}>
+                    <div className="eom-section-header" onClick={() => toggleSection('photos')}>
                       <span className="eom-section-label">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                         Fotos
                       </span>
+                      <svg className="eom-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                     </div>
+                    {!collapsedSections.photos && (
                     <div className="eom-section-body">
                       {editing.photos.length > 0 && (
                         <div className="eom-photo-grid">
@@ -1220,6 +1249,7 @@ export default function OrderList({ onNavigate, userRole }: { onNavigate: (view:
                         </label>
                       </div>
                     </div>
+                    )}
                   </div>
 
                   {/* Mobile-only quick actions */}
