@@ -1,0 +1,323 @@
+openapi: "3.0.3"
+info:
+  title: Raffer Invoices API
+  version: "1.0.0"
+  description: |
+    Invoice emission via SimpleFactura + Step Functions, listing, PDF retrieval, preview, resend.
+
+    Invoice flow:
+    1. POST /api/invoices → starts Step Functions state machine (async)
+    2. State machine: create DB record → authenticate with SF → check/request folios → emit DTE → save result → poll SII status
+    3. Status transitions: pending → emitted → accepted | rejected | error
+    4. Failed invoices can be resent (1 min cooldown)
+
+    Payment terms:
+    - fma_pago=1: contado (no fch_venc needed)
+    - fma_pago=2: crédito (fch_venc required)
+
+    Base URL: https://api.raffer.cl
+
+servers:
+  - url: https://api.raffer.cl
+
+paths:
+  /api/invoices:
+    get:
+      summary: List invoices
+      description: Returns paginated invoices. Optionally filter by client.
+      operationId: listInvoices
+      tags: [Invoices]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: client_id
+          in: query
+          schema: { type: integer }
+          description: Filter by client
+        - name: page
+          in: query
+          schema: { type: integer, default: 1, minimum: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+      responses:
+        "200":
+          description: Paginated invoices
+          content:
+            application/json:
+              example:
+                data:
+                  - id: 1
+                    client_id: 5
+                    folio: 12345
+                    tipo_dte: 33
+                    fecha_emision: "29/03/2026"
+                    monto_neto: 72000
+                    iva: 13680
+                    monto_total: 85680
+                    fma_pago: 2
+                    fch_venc: "2026-04-15"
+                    status: "accepted"
+                    estado_sii: "DOK"
+                    order_ids: [1, 2]
+                    created_at: "2026-03-29T12:00:00Z"
+                total: 25
+                page: 1
+                limit: 20
+                total_pages: 2
+                request_id: "abc-123"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      summary: Emit invoice (async)
+      description: |
+        Starts the invoice emission workflow via Step Functions.
+        Returns immediately with the execution ARN.
+        All orders must belong to the same client and not be already invoiced.
+      operationId: emitInvoice
+      tags: [Invoices]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmitInvoiceRequest"
+            example:
+              order_ids: [1, 2]
+              fma_pago: 2
+              fch_venc: "2026-04-15"
+      responses:
+        "202":
+          description: Invoice emission started
+          content:
+            application/json:
+              example:
+                data:
+                  execution_arn: "arn:aws:states:us-east-2:123456789:execution:InvoiceStateMachine:abc-123"
+                  order_ids: [1, 2]
+                request_id: "abc-123"
+        "400":
+          description: |
+            Validation errors:
+            - order_ids is required
+            - orders not found or count mismatch
+            - orders must belong to the same client
+            - order already invoiced
+          content:
+            application/json:
+              example:
+                error:
+                  code: VALIDATION_ERROR
+                  message: "order 1 is already invoiced (invoice_id=5)"
+                request_id: "abc-123"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/invoices/{id}:
+    get:
+      summary: Get invoice
+      operationId: getInvoice
+      tags: [Invoices]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Invoice details
+          content:
+            application/json:
+              example:
+                data:
+                  id: 1
+                  client_id: 5
+                  folio: 12345
+                  tipo_dte: 33
+                  fecha_emision: "29/03/2026"
+                  monto_neto: 72000
+                  iva: 13680
+                  monto_total: 85680
+                  fma_pago: 2
+                  fch_venc: "2026-04-15"
+                  status: "accepted"
+                  estado_sii: "DOK"
+                  order_ids: [1, 2]
+                  created_at: "2026-03-29T12:00:00Z"
+                request_id: "abc-123"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/invoices/{id}/pdf:
+    get:
+      summary: Get invoice PDF
+      description: |
+        Retrieves the emitted DTE PDF from SimpleFactura.
+        Only works for invoices with a folio (status = emitted/accepted/rejected).
+      operationId: getInvoicePDF
+      tags: [Invoices]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Base64 PDF
+          content:
+            application/json:
+              example:
+                data: "JVBERi0xLjQK..."
+                type: "application/pdf"
+                request_id: "abc-123"
+        "400":
+          description: Invoice has no folio yet (still pending)
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/invoices/preview:
+    post:
+      summary: Preview DTE before emitting
+      description: |
+        Generates a preview image of the DTE from SimpleFactura without actually emitting it.
+        Uses the same request body as emit.
+      operationId: previewInvoice
+      tags: [Invoices]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmitInvoiceRequest"
+            example:
+              order_ids: [1, 2]
+              fma_pago: 2
+              fch_venc: "2026-04-15"
+      responses:
+        "200":
+          description: Base64 preview image
+          content:
+            application/json:
+              example:
+                data: "iVBORw0KGgo..."
+                type: "image/png"
+                request_id: "abc-123"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/invoices/{id}/resend:
+    post:
+      summary: Resend failed invoice
+      description: |
+        Resends an invoice that has status "error".
+        - Only error status invoices can be resent
+        - 1 minute cooldown between resend attempts
+        - Resets status to "pending" and starts a new Step Functions execution
+      operationId: resendInvoice
+      tags: [Invoices]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "202":
+          description: Resend started
+          content:
+            application/json:
+              example:
+                data:
+                  execution_arn: "arn:aws:states:us-east-2:123456789:execution:InvoiceStateMachine:def-456"
+                  order_ids: [1, 2]
+                request_id: "abc-123"
+        "400":
+          description: |
+            - Only error invoices can be resent
+            - Must wait 1 minute between resend attempts
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+components:
+  securitySchemes:
+    BearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  schemas:
+    EmitInvoiceRequest:
+      type: object
+      required: [order_ids]
+      properties:
+        order_ids:
+          type: array
+          items: { type: integer }
+          description: Order IDs to include in the invoice (must be same client, not already invoiced)
+        fma_pago:
+          type: integer
+          enum: [1, 2]
+          default: 2
+          description: "1 = contado, 2 = crédito"
+        fch_venc:
+          type: string
+          format: date
+          nullable: true
+          description: "Due date (required when fma_pago=2)"
+
+    InvoiceDTO:
+      type: object
+      properties:
+        id: { type: integer }
+        client_id: { type: integer }
+        folio: { type: integer, nullable: true, description: "SII folio number, null until emitted" }
+        tipo_dte: { type: integer, description: "Always 33 (factura electrónica)" }
+        fecha_emision: { type: string, nullable: true, description: "Format: DD/MM/YYYY" }
+        monto_neto: { type: integer }
+        iva: { type: integer }
+        monto_total: { type: integer }
+        fma_pago: { type: integer, description: "1=contado, 2=crédito" }
+        fch_venc: { type: string, format: date, nullable: true }
+        status:
+          type: string
+          enum: [pending, emitted, accepted, rejected, error]
+          description: "pending → emitted → accepted/rejected/error"
+        estado_sii: { type: string, nullable: true, description: "SII status code (DOK, RCH, etc.)" }
+        error_message: { type: string, nullable: true, description: "Only present on error status" }
+        order_ids:
+          type: array
+          items: { type: integer }
+        created_at: { type: string, format: date-time }
+        last_resend: { type: string, format: date-time, nullable: true }
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          example:
+            error: { code: VALIDATION_ERROR, message: "order_ids is required" }
+            request_id: "abc-123"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          example:
+            error: { code: NOT_FOUND, message: "invoice not found" }
+            request_id: "abc-123"
+    Unauthorized:
+      description: Missing or invalid token
+      content:
+        application/json:
+          example:
+            error: { code: UNAUTHORIZED, message: "missing or invalid authorization header" }
+            request_id: "abc-123"

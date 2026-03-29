@@ -1,0 +1,304 @@
+openapi: "3.0.3"
+info:
+  title: Raffer Clients API
+  version: "1.0.0"
+  description: |
+    Client management — CRUD with fuzzy search, pagination, and preferential pricing.
+    Base URL: https://api.raffer.cl
+
+servers:
+  - url: https://api.raffer.cl
+
+paths:
+  /api/clients:
+    get:
+      summary: List clients
+      description: |
+        Returns paginated clients. Supports fuzzy search on name, email, and rut (trigram matching).
+        List endpoint returns empty prices array — use GET /api/clients/{id} for full prices.
+      operationId: listClients
+      tags: [Clients]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string }
+          description: Fuzzy search on name, email, rut (trigram)
+          example: "grupo linea"
+        - name: active
+          in: query
+          schema: { type: boolean }
+          description: Filter by active status
+        - name: page
+          in: query
+          schema: { type: integer, default: 1, minimum: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+      responses:
+        "200":
+          description: Paginated client list
+          content:
+            application/json:
+              example:
+                data:
+                  - id: 1
+                    name: "GRUPO LINEA SPA"
+                    rut: "77659006-1"
+                    email: "sergio@grupolinea.cl"
+                    phone: "+56961910785"
+                    billing_addr: null
+                    giro: "Publicidad"
+                    comuna: "Santiago"
+                    ciudad: "Santiago"
+                    is_active: true
+                    prices: []
+                    created_at: "2026-02-10T21:50:32Z"
+                    updated_at: "2026-03-16T15:31:15Z"
+                total: 45
+                page: 1
+                limit: 20
+                total_pages: 3
+                request_id: "abc-123"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      summary: Create client
+      description: Creates a new client. Name is required. Optionally include preferential prices.
+      operationId: createClient
+      tags: [Clients]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClientRequest"
+            example:
+              name: "GRUPO LINEA SPA"
+              rut: "77659006-1"
+              email: "sergio@grupolinea.cl"
+              phone: "+56961910785"
+              giro: "Publicidad"
+              comuna: "Santiago"
+              ciudad: "Santiago"
+              prices:
+                - default_price_id: 1
+                  price: 10000
+      responses:
+        "201":
+          description: Client created
+          content:
+            application/json:
+              example:
+                data:
+                  id: 46
+                  name: "GRUPO LINEA SPA"
+                  rut: "77659006-1"
+                  email: "sergio@grupolinea.cl"
+                  phone: "+56961910785"
+                  billing_addr: null
+                  giro: "Publicidad"
+                  comuna: "Santiago"
+                  ciudad: "Santiago"
+                  is_active: true
+                  prices:
+                    - id: 12
+                      default_price_id: 1
+                      service: "DTF"
+                      min_meters: 1
+                      max_meters: 4
+                      price: 10000
+                  created_at: "2026-03-29T12:00:00Z"
+                  updated_at: "2026-03-29T12:00:00Z"
+                request_id: "abc-123"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/clients/{id}:
+    get:
+      summary: Get client with prices
+      description: Returns a single client with their preferential prices.
+      operationId: getClient
+      tags: [Clients]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Client with preferential prices
+          content:
+            application/json:
+              example:
+                data:
+                  id: 1
+                  name: "GRUPO LINEA SPA"
+                  rut: "77659006-1"
+                  email: "sergio@grupolinea.cl"
+                  phone: "+56961910785"
+                  billing_addr: null
+                  giro: "Publicidad"
+                  comuna: "Santiago"
+                  ciudad: "Santiago"
+                  is_active: true
+                  prices:
+                    - id: 12
+                      default_price_id: 1
+                      service: "DTF"
+                      min_meters: 1
+                      max_meters: 4
+                      price: 10000
+                    - id: 13
+                      default_price_id: 2
+                      service: "DTF"
+                      min_meters: 5
+                      max_meters: 9
+                      price: 9500
+                  created_at: "2026-02-10T21:50:32Z"
+                  updated_at: "2026-03-16T15:31:15Z"
+                request_id: "abc-123"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    put:
+      summary: Update client
+      description: |
+        Update client fields. All fields are optional — only provided fields are updated.
+        If prices array is provided, it replaces all existing preferential prices.
+      operationId: updateClient
+      tags: [Clients]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClientRequest"
+            example:
+              name: "GRUPO LINEA SPA UPDATED"
+              phone: "+56999999999"
+              prices:
+                - default_price_id: 1
+                  price: 11000
+      responses:
+        "200":
+          description: Client updated
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+components:
+  securitySchemes:
+    BearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  schemas:
+    CreateClientRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        rut: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        billing_addr: { type: string, nullable: true }
+        giro: { type: string, nullable: true }
+        comuna: { type: string, nullable: true }
+        ciudad: { type: string, nullable: true }
+        prices:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClientPriceInput"
+
+    UpdateClientRequest:
+      type: object
+      properties:
+        name: { type: string }
+        rut: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        billing_addr: { type: string }
+        is_active: { type: boolean }
+        giro: { type: string }
+        comuna: { type: string }
+        ciudad: { type: string }
+        prices:
+          type: array
+          description: If provided, replaces all existing prices
+          items:
+            $ref: "#/components/schemas/ClientPriceInput"
+
+    ClientPriceInput:
+      type: object
+      required: [default_price_id, price]
+      properties:
+        default_price_id: { type: integer, description: "ID from /api/default-prices" }
+        price: { type: integer, description: "CLP per unit override" }
+
+    ClientDTO:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        rut: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        billing_addr: { type: string, nullable: true }
+        giro: { type: string, nullable: true }
+        comuna: { type: string, nullable: true }
+        ciudad: { type: string, nullable: true }
+        is_active: { type: boolean }
+        prices:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClientPriceDTO"
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ClientPriceDTO:
+      type: object
+      properties:
+        id: { type: integer }
+        default_price_id: { type: integer }
+        service: { type: string }
+        min_meters: { type: number }
+        max_meters: { type: number, nullable: true }
+        price: { type: integer }
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          example:
+            error: { code: VALIDATION_ERROR, message: "name is required" }
+            request_id: "abc-123"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          example:
+            error: { code: NOT_FOUND, message: "client not found" }
+            request_id: "abc-123"
+    Unauthorized:
+      description: Missing or invalid token
+      content:
+        application/json:
+          example:
+            error: { code: UNAUTHORIZED, message: "missing or invalid authorization header" }
+            request_id: "abc-123"

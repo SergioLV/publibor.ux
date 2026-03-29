@@ -1,0 +1,157 @@
+openapi: "3.0.3"
+info:
+  title: Raffer Prices API
+  version: "1.0.0"
+  description: |
+    Default pricing tiers management. Prices are per service and meter range.
+    When creating an order, the system resolves the unit price by:
+    1. Check client preferential price for the matched tier
+    2. Fall back to default tier price
+    3. Error if no tier matches
+
+    Available services: DTF, SUBLIMACION, UV, TEXTURIZADO, LASER_CO2, LASER_FIBRA, BORDADOS, TEXTIL, POR_CONFIRMAR
+
+    Base URL: https://api.raffer.cl
+
+servers:
+  - url: https://api.raffer.cl
+
+paths:
+  /api/default-prices:
+    get:
+      summary: List default prices
+      description: Returns all price tiers. Optionally filter by service.
+      operationId: listDefaultPrices
+      tags: [Prices]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: service
+          in: query
+          schema: { type: string }
+          description: Filter by service name
+          example: DTF
+      responses:
+        "200":
+          description: List of price tiers (not paginated)
+          content:
+            application/json:
+              example:
+                data:
+                  - id: 1
+                    service: DTF
+                    min_meters: 1
+                    max_meters: 4
+                    price: 12500
+                  - id: 2
+                    service: DTF
+                    min_meters: 5
+                    max_meters: 9
+                    price: 12000
+                  - id: 3
+                    service: DTF
+                    min_meters: 10
+                    max_meters: 24
+                    price: 11500
+                  - id: 4
+                    service: DTF
+                    min_meters: 25
+                    max_meters: null
+                    price: 9000
+                request_id: "abc-123"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      summary: Create or update a price tier
+      description: |
+        Upserts a price tier by (service, min_meters). If a tier with the same
+        service and min_meters exists, it updates the price and max_meters.
+      operationId: upsertDefaultPrice
+      tags: [Prices]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertDefaultPriceRequest"
+            example:
+              service: DTF
+              min_meters: 1
+              max_meters: 4
+              price: 13000
+      responses:
+        "200":
+          description: Price tier created or updated
+          content:
+            application/json:
+              example:
+                data:
+                  id: 1
+                  service: DTF
+                  min_meters: 1
+                  max_meters: 4
+                  price: 13000
+                request_id: "abc-123"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    put:
+      summary: Create or update a price tier (alias for POST)
+      operationId: upsertDefaultPricePut
+      tags: [Prices]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertDefaultPriceRequest"
+      responses:
+        "200":
+          description: Price tier created or updated
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+components:
+  securitySchemes:
+    BearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  schemas:
+    DefaultPriceDTO:
+      type: object
+      properties:
+        id: { type: integer }
+        service: { type: string, example: DTF }
+        min_meters: { type: number, example: 1 }
+        max_meters: { type: number, nullable: true, example: 4, description: "null = unlimited" }
+        price: { type: integer, description: "CLP per unit", example: 12500 }
+
+    UpsertDefaultPriceRequest:
+      type: object
+      required: [service, min_meters, price]
+      properties:
+        service: { type: string, example: DTF }
+        min_meters: { type: number, example: 1 }
+        max_meters: { type: number, nullable: true, example: 4 }
+        price: { type: integer, example: 13000 }
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          example:
+            error: { code: VALIDATION_ERROR, message: "service is required" }
+            request_id: "abc-123"
+    Unauthorized:
+      description: Missing or invalid token
+      content:
+        application/json:
+          example:
+            error: { code: UNAUTHORIZED, message: "missing or invalid authorization header" }
+            request_id: "abc-123"

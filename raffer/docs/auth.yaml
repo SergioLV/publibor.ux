@@ -1,0 +1,145 @@
+openapi: "3.0.3"
+info:
+  title: Raffer Auth API
+  version: "1.0.0"
+  description: |
+    Authentication endpoints — login and token validation.
+    Base URL: https://api.raffer.cl
+
+servers:
+  - url: https://api.raffer.cl
+
+paths:
+  /api/auth/login:
+    post:
+      summary: Login
+      description: |
+        Authenticate with tenant slug, username, and password. Returns a JWT token (24h TTL).
+        The tenant slug comes from the subdomain (e.g. "publibor" from publibor.raffer.cl).
+      operationId: login
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              tenant: publibor
+              username: admin
+              password: secret123
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              example:
+                data:
+                  token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  expires_at: "2026-03-30T17:00:00Z"
+                request_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        "400":
+          description: Invalid credentials or missing fields
+          content:
+            application/json:
+              example:
+                error:
+                  code: VALIDATION_ERROR
+                  message: invalid credentials
+                request_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/auth/me:
+    get:
+      summary: Get current user
+      description: Returns the authenticated user's info from the JWT token.
+      operationId: me
+      tags: [Auth]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Current user info
+          content:
+            application/json:
+              example:
+                data:
+                  id: 1
+                  tenant_id: "a0000000-0000-0000-0000-000000000001"
+                  username: admin
+                  role: admin
+                request_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "JWT token from /api/auth/login. Send as: Authorization: Bearer <token>"
+
+  schemas:
+    LoginRequest:
+      type: object
+      required: [tenant, username, password]
+      properties:
+        tenant:
+          type: string
+          description: Tenant slug (from subdomain, e.g. "publibor")
+          example: publibor
+        username:
+          type: string
+          example: admin
+        password:
+          type: string
+          format: password
+          example: secret123
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT token (24h TTL)
+        expires_at:
+          type: string
+          format: date-time
+
+    MeResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        tenant_id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        role:
+          type: string
+          enum: [admin, operator]
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid token
+      content:
+        application/json:
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: missing or invalid authorization header
+            request_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          example:
+            error:
+              code: INTERNAL_ERROR
+              message: internal server error
+            request_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"

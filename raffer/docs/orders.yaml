@@ -1,0 +1,677 @@
+openapi: "3.0.3"
+info:
+  title: Raffer Orders API
+  version: "1.0.0"
+  description: |
+    Orders CRUD, bulk mark-paid, purchase orders, photos, cotización PDF, Excel export.
+
+    Price resolution: when creating/updating an order without unit_price override,
+    the system finds the matching tier for (service, meters) and checks for a client
+    preferential price. If no tier matches, it returns a validation error.
+
+    Tax: 19% IVA is calculated automatically (subtotal = meters × unit_price, tax = subtotal × 19%).
+
+    Base URL: https://api.raffer.cl
+
+servers:
+  - url: https://api.raffer.cl
+
+paths:
+  /api/orders:
+    get:
+      summary: List orders
+      description: |
+        Returns paginated orders with purchase orders and photos included.
+        All filters are optional.
+      operationId: listOrders
+      tags: [Orders]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: client_id
+          in: query
+          schema: { type: integer }
+          description: Filter by client
+        - name: service
+          in: query
+          schema: { type: string }
+          description: Filter by service (DTF, SUBLIMACION, UV, etc.)
+        - name: is_paid
+          in: query
+          schema: { type: boolean }
+          description: Filter by payment status
+        - name: date_from
+          in: query
+          schema: { type: string, format: date }
+          description: Filter orders created on or after this date (YYYY-MM-DD)
+        - name: date_to
+          in: query
+          schema: { type: string, format: date }
+          description: Filter orders created on or before this date (YYYY-MM-DD)
+        - name: page
+          in: query
+          schema: { type: integer, default: 1, minimum: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+      responses:
+        "200":
+          description: Paginated orders
+          content:
+            application/json:
+              example:
+                data:
+                  - id: 1
+                    client_id: 5
+                    service: "DTF"
+                    description: "Banner 3x2"
+                    meters: 6.0
+                    unit_price: 12000
+                    subtotal: 72000
+                    tax_pct: 19
+                    tax_amount: 13680
+                    total_amount: 85680
+                    bultos: 2
+                    is_paid: false
+                    paid_at: null
+                    invoice_id: null
+                    purchase_orders:
+                      - id: 1
+                        oc_number: "OC-2024-001"
+                        date: "2026-03-15"
+                    photos:
+                      - id: 1
+                        filename: "foto1.jpg"
+                        content_type: "image/jpeg"
+                        url: "https://s3.amazonaws.com/..."
+                    created_at: "2026-03-20T14:30:00Z"
+                total: 150
+                page: 1
+                limit: 20
+                total_pages: 8
+                request_id: "abc-123"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      summary: Create order
+      description: |
+        Creates a new order with automatic price resolution.
+        - If unit_price is provided, it's used directly (must be > 0)
+        - If not, the system resolves from client prices → default tiers
+        - Purchase orders are created/linked inline
+        - Photos can be uploaded inline as base64
+      operationId: createOrder
+      tags: [Orders]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+            example:
+              client_id: 5
+              service: "DTF"
+              description: "Banner 3x2"
+              meters: 6.0
+              bultos: 2
+              purchase_orders:
+                - oc_number: "OC-2024-001"
+                  date: "2026-03-15"
+              photos:
+                - filename: "foto1.jpg"
+                  content_type: "image/jpeg"
+                  data: "/9j/4AAQSkZJRg..."
+      responses:
+        "201":
+          description: Order created
+          content:
+            application/json:
+              example:
+                data:
+                  id: 151
+                  client_id: 5
+                  service: "DTF"
+                  description: "Banner 3x2"
+                  meters: 6.0
+                  unit_price: 12000
+                  subtotal: 72000
+                  tax_pct: 19
+                  tax_amount: 13680
+                  total_amount: 85680
+                  bultos: 2
+                  is_paid: false
+                  paid_at: null
+                  invoice_id: null
+                  purchase_orders:
+                    - id: 1
+                      oc_number: "OC-2024-001"
+                      date: "2026-03-15"
+                  photos:
+                    - id: 1
+                      filename: "foto1.jpg"
+                      content_type: "image/jpeg"
+                      url: "https://s3.amazonaws.com/..."
+                  created_at: "2026-03-29T12:00:00Z"
+                request_id: "abc-123"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/orders/{id}:
+    get:
+      summary: Get order
+      description: Returns a single order with purchase orders and photos.
+      operationId: getOrder
+      tags: [Orders]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Order with purchase orders and photos
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    put:
+      summary: Update order
+      description: |
+        Update order fields. All fields are optional.
+        If service, meters, or unit_price change, totals are recalculated.
+        If purchase_orders is provided, it replaces existing PO links.
+      operationId: updateOrder
+      tags: [Orders]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrderRequest"
+            example:
+              meters: 8.5
+              is_paid: true
+      responses:
+        "200":
+          description: Order updated
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    delete:
+      summary: Delete order
+      description: Deletes an order. Cannot delete if already invoiced.
+      operationId: deleteOrder
+      tags: [Orders]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Order deleted
+          content:
+            application/json:
+              example:
+                data: { message: "order deleted" }
+                request_id: "abc-123"
+        "400":
+          description: Cannot delete invoiced order
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/orders/mark-paid:
+    put:
+      summary: Bulk mark orders as paid
+      operationId: markPaid
+      tags: [Orders]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              ids: [1, 2, 3]
+            schema:
+              type: object
+              required: [ids]
+              properties:
+                ids:
+                  type: array
+                  items: { type: integer }
+      responses:
+        "200":
+          description: Updated orders returned
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/orders/export:
+    get:
+      summary: Export orders to Excel
+      description: |
+        Returns a base64-encoded XLSX file with order details and summary by service.
+        Pass comma-separated order IDs.
+      operationId: exportOrders
+      tags: [Orders]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          schema: { type: string }
+          description: Comma-separated order IDs
+          example: "1,2,3"
+      responses:
+        "200":
+          description: Base64 XLSX
+          content:
+            application/json:
+              example:
+                data: "UEsDBBQAAAAIAA..."
+                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                request_id: "abc-123"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/orders/{id}/cotizacion:
+    get:
+      summary: Get cotización PDF for a single order
+      description: Returns a base64-encoded PDF cotización for the specified order.
+      operationId: getCotizacion
+      tags: [Orders]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Base64 PDF
+          content:
+            application/json:
+              example:
+                data: "JVBERi0xLjQK..."
+                type: "application/pdf"
+                request_id: "abc-123"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/orders/cotizacion:
+    post:
+      summary: Bulk cotización PDF
+      description: |
+        Generates a single PDF cotización for multiple orders.
+        All orders must belong to the same client.
+      operationId: bulkCotizacion
+      tags: [Orders]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              order_ids: [1, 2, 3]
+            schema:
+              type: object
+              required: [order_ids]
+              properties:
+                order_ids:
+                  type: array
+                  items: { type: integer }
+      responses:
+        "200":
+          description: Base64 PDF
+          content:
+            application/json:
+              example:
+                data: "JVBERi0xLjQK..."
+                type: "application/pdf"
+                request_id: "abc-123"
+        "400":
+          description: Orders must belong to the same client
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/cotizacion:
+    post:
+      summary: Bulk cotización PDF (alias)
+      description: Same as POST /api/orders/cotizacion.
+      operationId: bulkCotizacionAlias
+      tags: [Orders]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order_ids]
+              properties:
+                order_ids:
+                  type: array
+                  items: { type: integer }
+      responses:
+        "200":
+          description: Base64 PDF
+
+  /api/orders/purchase-orders:
+    get:
+      summary: List purchase orders by client
+      description: Returns all purchase orders for a given client.
+      operationId: listPurchaseOrders
+      tags: [Purchase Orders]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: client_id
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Purchase orders list
+          content:
+            application/json:
+              example:
+                data:
+                  - id: 1
+                    oc_number: "OC-2024-001"
+                    date: "2026-03-15"
+                  - id: 2
+                    oc_number: "OC-2024-002"
+                    date: null
+                request_id: "abc-123"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      summary: Create purchase order
+      description: Creates a standalone purchase order for a client.
+      operationId: createPurchaseOrder
+      tags: [Purchase Orders]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              client_id: 5
+              oc_number: "OC-2024-003"
+              date: "2026-03-20"
+            schema:
+              type: object
+              required: [client_id, oc_number]
+              properties:
+                client_id: { type: integer }
+                oc_number: { type: string }
+                date: { type: string, format: date, nullable: true }
+      responses:
+        "201":
+          description: Purchase order created
+          content:
+            application/json:
+              example:
+                data:
+                  id: 3
+                  oc_number: "OC-2024-003"
+                  date: "2026-03-20"
+                request_id: "abc-123"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/orders/{id}/photos:
+    get:
+      summary: List order photos
+      description: Returns photos with presigned S3 download URLs (1h expiry).
+      operationId: listPhotos
+      tags: [Photos]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Photos with presigned URLs
+          content:
+            application/json:
+              example:
+                data:
+                  - id: 1
+                    filename: "foto1.jpg"
+                    content_type: "image/jpeg"
+                    url: "https://s3.amazonaws.com/bucket/key?X-Amz-..."
+                request_id: "abc-123"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      summary: Upload photos to an order
+      description: |
+        Upload one or more photos as base64-encoded data.
+        Photos are stored in S3 and linked to the order.
+      operationId: uploadPhotos
+      tags: [Photos]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              photos:
+                - filename: "foto1.jpg"
+                  content_type: "image/jpeg"
+                  data: "/9j/4AAQSkZJRg..."
+            schema:
+              type: object
+              required: [photos]
+              properties:
+                photos:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/PhotoInput"
+      responses:
+        "201":
+          description: Photos uploaded
+          content:
+            application/json:
+              example:
+                data:
+                  - id: 2
+                    filename: "foto1.jpg"
+                    content_type: "image/jpeg"
+                    url: "https://s3.amazonaws.com/..."
+                request_id: "abc-123"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/orders/{id}/photos/{photoId}:
+    delete:
+      summary: Delete photo
+      description: Deletes a photo from S3 and the database.
+      operationId: deletePhoto
+      tags: [Photos]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: photoId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Photo deleted
+          content:
+            application/json:
+              example:
+                data: { message: "photo deleted" }
+                request_id: "abc-123"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+components:
+  securitySchemes:
+    BearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  schemas:
+    CreateOrderRequest:
+      type: object
+      required: [client_id, service, meters]
+      properties:
+        client_id: { type: integer, description: "Client ID" }
+        service: { type: string, description: "Service type (DTF, SUBLIMACION, UV, etc.)" }
+        description: { type: string, nullable: true }
+        meters: { type: number, minimum: 0.1 }
+        unit_price: { type: integer, nullable: true, description: "Override price (CLP). If omitted, auto-resolved from tiers." }
+        bultos: { type: integer, nullable: true }
+        purchase_orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseOrderInput"
+        photos:
+          type: array
+          items:
+            $ref: "#/components/schemas/PhotoInput"
+
+    UpdateOrderRequest:
+      type: object
+      description: All fields optional. Providing service/meters/unit_price triggers recalculation.
+      properties:
+        service: { type: string }
+        description: { type: string }
+        meters: { type: number, minimum: 0.1 }
+        unit_price: { type: integer, description: "Override price" }
+        bultos: { type: integer }
+        is_paid: { type: boolean }
+        purchase_orders:
+          type: array
+          description: If provided, replaces existing PO links
+          items:
+            $ref: "#/components/schemas/PurchaseOrderInput"
+        photos:
+          type: array
+          items:
+            $ref: "#/components/schemas/PhotoInput"
+
+    PurchaseOrderInput:
+      type: object
+      required: [oc_number]
+      properties:
+        oc_number: { type: string, example: "OC-2024-001" }
+        date: { type: string, format: date, nullable: true, example: "2026-03-15" }
+
+    PhotoInput:
+      type: object
+      required: [filename, data]
+      properties:
+        filename: { type: string, example: "foto1.jpg" }
+        content_type: { type: string, default: "image/jpeg" }
+        data: { type: string, format: byte, description: "Base64-encoded file content" }
+
+    OrderDTO:
+      type: object
+      properties:
+        id: { type: integer }
+        client_id: { type: integer }
+        service: { type: string }
+        description: { type: string, nullable: true }
+        meters: { type: number }
+        unit_price: { type: integer }
+        subtotal: { type: integer }
+        tax_pct: { type: integer, description: "Always 19" }
+        tax_amount: { type: integer }
+        total_amount: { type: integer }
+        bultos: { type: integer, nullable: true }
+        is_paid: { type: boolean }
+        paid_at: { type: string, format: date-time, nullable: true }
+        invoice_id: { type: integer, nullable: true }
+        purchase_orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseOrderDTO"
+        photos:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderPhotoDTO"
+        created_at: { type: string, format: date-time }
+
+    PurchaseOrderDTO:
+      type: object
+      properties:
+        id: { type: integer }
+        oc_number: { type: string }
+        date: { type: string, format: date, nullable: true }
+
+    OrderPhotoDTO:
+      type: object
+      properties:
+        id: { type: integer }
+        filename: { type: string }
+        content_type: { type: string }
+        url: { type: string, description: "Presigned S3 URL (1h expiry)" }
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          example:
+            error: { code: VALIDATION_ERROR, message: "meters must be at least 0.1" }
+            request_id: "abc-123"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          example:
+            error: { code: NOT_FOUND, message: "order not found" }
+            request_id: "abc-123"
+    Unauthorized:
+      description: Missing or invalid token
+      content:
+        application/json:
+          example:
+            error: { code: UNAUTHORIZED, message: "missing or invalid authorization header" }
+            request_id: "abc-123"
